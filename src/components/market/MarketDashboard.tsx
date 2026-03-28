@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { FMPClient } from "@/lib/fmp/client";
 import type { MarketData } from "@/lib/fmp/types";
+import {
+  calculateSlope,
+  calculateSentimentScore,
+  extractIndicatorValues,
+  getMarketRegime,
+} from "@/lib/market-utils";
 import { Loader2 } from "lucide-react";
+import SentimentScore from "./SentimentScore";
 import IndexBar from "./IndexBar";
 import VixGauge from "./VixGauge";
+import SpxTrendCard from "./SpxTrendCard";
 import TreasuryCard from "./TreasuryCard";
 import FearGreedGauge from "./FearGreedGauge";
-import SpxTrendCard from "./SpxTrendCard";
 import SectorGrid from "./SectorGrid";
 import MarketMovers from "./MarketMovers";
+import EconomicCalendar from "./EconomicCalendar";
 
 interface MarketDashboardProps {
   client: FMPClient | null;
@@ -52,6 +60,28 @@ export default function MarketDashboard({
     };
   }, [client, onRequestCountUpdate]);
 
+  const sentiment = useMemo(() => {
+    if (!data) return null;
+
+    const vixLevel = data.vix?.price ?? 20;
+    const spxPrice = data.spxHistory[0]?.close ?? 0;
+    const sma50Values = extractIndicatorValues(data.spxSma50, "sma");
+    const sma150Values = extractIndicatorValues(data.spxSma150, "sma");
+    const sma200Values = extractIndicatorValues(data.spxSma200, "sma");
+
+    const regime = getMarketRegime(
+      spxPrice,
+      sma50Values[0] ?? 0,
+      sma150Values[0] ?? 0,
+      sma200Values[0] ?? 0,
+      calculateSlope(sma50Values),
+      calculateSlope(sma150Values),
+      calculateSlope(sma200Values)
+    );
+
+    return calculateSentimentScore(vixLevel, regime, data.sectors);
+  }, [data]);
+
   if (!client) {
     return (
       <div className="rounded-lg border border-border bg-bg-surface p-8 text-center text-text-secondary">
@@ -81,13 +111,27 @@ export default function MarketDashboard({
 
   return (
     <div className="space-y-4">
-      <IndexBar
-        sp500={data.sp500}
-        nasdaq={data.nasdaq}
-        dowJones={data.dowJones}
-        russell={data.russell}
-      />
+      {/* Top row: Sentiment Score + Index Bar */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
+        {sentiment && (
+          <SentimentScore
+            score={sentiment.score}
+            label={sentiment.label}
+            color={sentiment.color}
+            commentary={sentiment.commentary}
+          />
+        )}
+        <div className="flex items-center">
+          <IndexBar
+            sp500={data.sp500}
+            nasdaq={data.nasdaq}
+            dowJones={data.dowJones}
+            russell={data.russell}
+          />
+        </div>
+      </div>
 
+      {/* Second row: VIX + SPX Trend + Treasury */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <VixGauge vix={data.vix} />
         <SpxTrendCard
@@ -102,16 +146,21 @@ export default function MarketDashboard({
         />
       </div>
 
+      {/* Third row: Fear & Greed + Sector Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FearGreedGauge />
         <SectorGrid sectors={data.sectors} />
       </div>
 
-      <MarketMovers
-        gainers={data.gainers}
-        losers={data.losers}
-        actives={data.actives}
-      />
+      {/* Fourth row: Market Movers + Economic Calendar */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <MarketMovers
+          gainers={data.gainers}
+          losers={data.losers}
+          actives={data.actives}
+        />
+        <EconomicCalendar events={data.econCalendar} />
+      </div>
     </div>
   );
 }
