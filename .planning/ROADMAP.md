@@ -11,7 +11,7 @@ None
 ## Phases
 
 - [x] **Phase 1: Foundation & Layout** — Next.js + TS project, dark theme system, page layout structure, API key input, FMP API service layer
-- [ ] **Phase 2: Market Sentiment Dashboard** — Always-visible macro view with composite score, F&G, VIX, SPX trend, sectors, movers, calendar, treasury
+- [x] **Phase 2: Market Sentiment Dashboard** — Always-visible macro view with composite score, F&G, VIX, SPX trend, sectors, movers, calendar, treasury
 - [ ] **Phase 3: Ticker Analysis Core** — Search bar, FMP data fetching (18 endpoints per ticker), response caching, header card, API request counter
 - [ ] **Phase 4: VMI Score Engine** — 9-criteria scoring system (0-100), visual gauge, fundamental scoreboard, valuation dashboard
 - [ ] **Phase 5: Technical Analysis** — MA dashboard with slopes, trend assessment (50/150 SMA crossover + slopes), RSI, golden/death cross, trading signals
@@ -40,7 +40,7 @@ Plans:
 Plans:
 - [x] 02-01: Market data fetching + index ticker bar + VIX gauge + treasury yield card
 - [x] 02-02: CNN F&G gauge (CORS fallback) + SPX trend card + sector grid + market movers
-- [ ] 02-03: Economic calendar + composite sentiment score + wire all into MarketDashboard layout
+- [x] 02-03: Economic calendar + composite sentiment score + wire all into MarketDashboard layout
 
 ### Phase 3: Ticker Analysis Core
 **Goal**: Working ticker search that fetches all 18 FMP endpoints, caches responses, and displays the header card (price, change, 52-week range bar, market cap, sector, beta)
@@ -95,7 +95,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Layout | 3/3 | Complete | 2026-03-28 |
-| 2. Market Sentiment Dashboard | 2/3 | In progress | - |
+| 2. Market Sentiment Dashboard | 3/3 | Complete | 2026-03-29 |
 | 3. Ticker Analysis Core | 0/3 | Not started | - |
 | 4. VMI Score Engine | 0/4 | Not started | - |
 | 5. Technical Analysis | 0/3 | Not started | - |
