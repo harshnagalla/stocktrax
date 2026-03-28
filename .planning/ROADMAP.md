@@ -27,7 +27,7 @@ None
 
 Plans:
 - [x] 01-01: Next.js + TypeScript project setup with Tailwind, recharts, lucide-react dependencies
-- [ ] 01-02: Dark theme system (#0d1117 base), layout shell with header, tab navigation (Market/Analysis/Compare), API key input component
+- [x] 01-02: Dark theme system (#0d1117 base), layout shell with header, tab navigation (Market/Analysis/Compare), API key input component
 - [ ] 01-03: FMP API service layer — typed fetch wrapper, request counter (250/day budget), response caching, error handling
 
 ### Phase 2: Market Sentiment Dashboard
