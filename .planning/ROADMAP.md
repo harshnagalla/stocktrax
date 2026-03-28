@@ -26,7 +26,7 @@ None
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Next.js + TypeScript project setup with Tailwind, recharts, lucide-react dependencies
+- [x] 01-01: Next.js + TypeScript project setup with Tailwind, recharts, lucide-react dependencies
 - [ ] 01-02: Dark theme system (#0d1117 base), layout shell with header, tab navigation (Market/Analysis/Compare), API key input component
 - [ ] 01-03: FMP API service layer — typed fetch wrapper, request counter (250/day budget), response caching, error handling
 
@@ -95,7 +95,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Layout | 0/3 | Not started | - |
+| 1. Foundation & Layout | 1/3 | In progress | - |
 | 2. Market Sentiment Dashboard | 0/4 | Not started | - |
 | 3. Ticker Analysis Core | 0/3 | Not started | - |
 | 4. VMI Score Engine | 0/4 | Not started | - |
