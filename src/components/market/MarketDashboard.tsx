@@ -9,6 +9,8 @@ import VixGauge from "./VixGauge";
 import TreasuryCard from "./TreasuryCard";
 import FearGreedGauge from "./FearGreedGauge";
 import SpxTrendCard from "./SpxTrendCard";
+import SectorGrid from "./SectorGrid";
+import MarketMovers from "./MarketMovers";
 
 interface MarketDashboardProps {
   client: FMPClient | null;
@@ -100,10 +102,16 @@ export default function MarketDashboard({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FearGreedGauge />
-        {/* Sector grid and market movers added in Task 2 */}
+        <SectorGrid sectors={data.sectors} />
       </div>
+
+      <MarketMovers
+        gainers={data.gainers}
+        losers={data.losers}
+        actives={data.actives}
+      />
     </div>
   );
 }
