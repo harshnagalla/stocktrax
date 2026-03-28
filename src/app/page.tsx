@@ -4,13 +4,14 @@ import { useState } from "react";
 import Header from "@/components/Header";
 import TabNavigation, { type Tab } from "@/components/TabNavigation";
 import { useFMPClient } from "@/hooks/useFMPClient";
+import MarketDashboard from "@/components/market/MarketDashboard";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
   const [apiKey, setApiKey] = useState("");
   const [tickers] = useState<string[]>([]);
 
-  const { requestCount } = useFMPClient(apiKey);
+  const { client, requestCount, updateRequestCount } = useFMPClient(apiKey);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -23,9 +24,10 @@ export default function Home() {
 
       <main className="flex-1 p-4">
         {activeTab === "market" && (
-          <div className="rounded-lg border border-border bg-bg-surface p-8 text-center text-text-secondary">
-            Market Sentiment Dashboard — coming in Phase 2
-          </div>
+          <MarketDashboard
+            client={client}
+            onRequestCountUpdate={updateRequestCount}
+          />
         )}
 
         {activeTab === "analysis" && (
