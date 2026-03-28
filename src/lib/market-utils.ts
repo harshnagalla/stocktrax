@@ -1,4 +1,4 @@
-import type { FMPTechnicalIndicator } from "./fmp/types";
+import type { FMPSectorPerformance, FMPTechnicalIndicator } from "./fmp/types";
 
 /**
  * Calculate slope as percentage change over lookback period.
@@ -86,6 +86,81 @@ export function getMarketRegime(
     bias: "NEUTRAL/CASH",
     color: "text-neutral",
   };
+}
+
+// ─── Composite Market Sentiment Score ────────────────────────────
+
+export interface SentimentResult {
+  score: number;
+  label: string;
+  color: string;
+  commentary: string;
+}
+
+export function calculateSentimentScore(
+  vixLevel: number,
+  regime: MarketRegime,
+  sectors: FMPSectorPerformance[]
+): SentimentResult {
+  // VIX component (30%)
+  let vixScore: number;
+  if (vixLevel < 15) vixScore = 85;
+  else if (vixLevel < 20) vixScore = 65;
+  else if (vixLevel < 30) vixScore = 40;
+  else vixScore = 15;
+
+  // SPX Trend component (35%)
+  const trendScores: Record<MarketRegime["regime"], number> = {
+    Bull: 90,
+    "Bull Correction": 60,
+    Transitioning: 40,
+    Bear: 10,
+  };
+  const trendScore = trendScores[regime.regime];
+
+  // Sector Breadth component (35%)
+  const positiveSectors = sectors.filter(
+    (s) => parseFloat(s.changesPercentage.replace("%", "")) >= 0
+  ).length;
+  const sectorRatio = sectors.length > 0 ? positiveSectors / sectors.length : 0.5;
+  const sectorScore = sectorRatio * 90 + 10;
+
+  const score = Math.round(
+    vixScore * 0.3 + trendScore * 0.35 + sectorScore * 0.35
+  );
+
+  let label: string;
+  let color: string;
+  let commentary: string;
+
+  if (score >= 80) {
+    label = "Market Euphoria";
+    color = "text-bullish";
+    commentary =
+      "Extreme greed — market may be overextended. Tighten stop-losses and be cautious of new positions.";
+  } else if (score >= 60) {
+    label = "Bullish Sentiment";
+    color = "text-bullish";
+    commentary =
+      "Favorable for long positions. Look for quality setups with confirmed uptrends.";
+  } else if (score >= 40) {
+    label = "Neutral / Mixed";
+    color = "text-neutral";
+    commentary =
+      "Be selective — stick to high-quality setups. Ideal for finding Trend Retracement entries.";
+  } else if (score >= 20) {
+    label = "Bearish / Fearful";
+    color = "text-neutral";
+    commentary =
+      "Caution for new longs. Potential opportunities forming — watch for capitulation signals.";
+  } else {
+    label = "Capitulation";
+    color = "text-bearish";
+    commentary =
+      'Extreme fear — Adam Khoo says "Be greedy when others are fearful." Look for quality stocks at discounts.';
+  }
+
+  return { score, label, color, commentary };
 }
 
 /**
