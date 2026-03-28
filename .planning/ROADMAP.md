@@ -38,10 +38,9 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: Market index ticker bar (SPX, NDX, DJI, RUT quotes) + VIX gauge + treasury yield display with yield curve status
-- [ ] 02-02: CNN Fear & Greed gauge (semi-circular, with CORS fallback) + S&P 500 trend analysis card (50/150/200 SMA alignment and slopes)
-- [ ] 02-03: Sector performance heatmap + market movers (top 5 gainers/losers/most active with clickable tickers)
-- [ ] 02-04: Economic calendar + composite market sentiment score (weighted: F&G 25%, VIX 20%, SPX trend 25%, sector breadth 15%, market breadth 15%)
+- [ ] 02-01: Market data fetching + index ticker bar + VIX gauge + treasury yield card
+- [ ] 02-02: CNN F&G gauge (CORS fallback) + SPX trend card + sector grid + market movers
+- [ ] 02-03: Economic calendar + composite sentiment score + wire all into MarketDashboard layout
 
 ### Phase 3: Ticker Analysis Core
 **Goal**: Working ticker search that fetches all 18 FMP endpoints, caches responses, and displays the header card (price, change, 52-week range bar, market cap, sector, beta)
@@ -96,7 +95,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Layout | 3/3 | Complete | 2026-03-28 |
-| 2. Market Sentiment Dashboard | 0/4 | Not started | - |
+| 2. Market Sentiment Dashboard | 0/3 | Not started | - |
 | 3. Ticker Analysis Core | 0/3 | Not started | - |
 | 4. VMI Score Engine | 0/4 | Not started | - |
 | 5. Technical Analysis | 0/3 | Not started | - |
