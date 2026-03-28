@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Header from "@/components/Header";
 import TabNavigation, { type Tab } from "@/components/TabNavigation";
+import { useFMPClient } from "@/hooks/useFMPClient";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
   const [apiKey, setApiKey] = useState("");
   const [tickers] = useState<string[]>([]);
 
-  const requestCount = 0; // Placeholder — wired to FMP client in Plan 01-03
+  const { requestCount } = useFMPClient(apiKey);
 
   return (
     <div className="flex min-h-screen flex-col">
