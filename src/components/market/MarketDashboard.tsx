@@ -7,6 +7,8 @@ import { Loader2 } from "lucide-react";
 import IndexBar from "./IndexBar";
 import VixGauge from "./VixGauge";
 import TreasuryCard from "./TreasuryCard";
+import FearGreedGauge from "./FearGreedGauge";
+import SpxTrendCard from "./SpxTrendCard";
 
 interface MarketDashboardProps {
   client: FMPClient | null;
@@ -86,11 +88,21 @@ export default function MarketDashboard({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         <VixGauge vix={data.vix} />
+        <SpxTrendCard
+          spxHistory={data.spxHistory}
+          spxSma50={data.spxSma50}
+          spxSma150={data.spxSma150}
+          spxSma200={data.spxSma200}
+        />
         <TreasuryCard
           treasury={data.treasury}
           treasuryRates={data.treasuryRates}
         />
-        {/* Placeholder for components from Plan 02-02 and 02-03 */}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <FearGreedGauge />
+        {/* Sector grid and market movers added in Task 2 */}
       </div>
     </div>
   );
