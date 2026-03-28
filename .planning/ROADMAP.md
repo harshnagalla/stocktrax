@@ -38,7 +38,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: Market data fetching + index ticker bar + VIX gauge + treasury yield card
+- [x] 02-01: Market data fetching + index ticker bar + VIX gauge + treasury yield card
 - [ ] 02-02: CNN F&G gauge (CORS fallback) + SPX trend card + sector grid + market movers
 - [ ] 02-03: Economic calendar + composite sentiment score + wire all into MarketDashboard layout
 
@@ -95,7 +95,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Layout | 3/3 | Complete | 2026-03-28 |
-| 2. Market Sentiment Dashboard | 0/3 | Not started | - |
+| 2. Market Sentiment Dashboard | 1/3 | In progress | - |
 | 3. Ticker Analysis Core | 0/3 | Not started | - |
 | 4. VMI Score Engine | 0/4 | Not started | - |
 | 5. Technical Analysis | 0/3 | Not started | - |
