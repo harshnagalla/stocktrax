@@ -12,7 +12,9 @@ import { Loader2 } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(
+    process.env.NEXT_PUBLIC_FMP_API_KEY ?? ""
+  );
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerDataMap, setTickerDataMap] = useState<Record<string, TickerData>>({});
   const [loadingTickers, setLoadingTickers] = useState<Set<string>>(new Set());
