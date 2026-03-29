@@ -54,7 +54,7 @@ Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 2000,
+            maxOutputTokens: 8000,
           },
         }),
       }
@@ -80,13 +80,25 @@ Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
       return NextResponse.json({ error: "Empty response from Gemini" }, { status: 502 });
     }
 
-    // Extract JSON from response — handle markdown wrapping, thinking blocks
-    const jsonMatch = text.match(/\{[\s\S]*"action"[\s\S]*"summary"[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error("No JSON found in Gemini response:", text.slice(0, 500));
+    // Extract JSON — find the outermost { } that contains "action"
+    let jsonStr = "";
+    const start = text.indexOf("{");
+    if (start !== -1) {
+      let depth = 0;
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === "{") depth++;
+        else if (text[i] === "}") depth--;
+        if (depth === 0) {
+          jsonStr = text.slice(start, i + 1);
+          break;
+        }
+      }
+    }
+    if (!jsonStr || !jsonStr.includes('"action"')) {
+      console.error("No JSON in Gemini response:", text.slice(0, 500));
       return NextResponse.json({ error: "Could not parse analysis" }, { status: 502 });
     }
-    const analysis = JSON.parse(jsonMatch[0]);
+    const analysis = JSON.parse(jsonStr);
 
     return NextResponse.json({ symbol, ...analysis });
   } catch (err) {
