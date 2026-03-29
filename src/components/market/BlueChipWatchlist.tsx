@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp, Loader2, ArrowRight } from "lucide-react";
 
 const BLUE_CHIPS = ["AAPL", "MSFT", "GOOG", "AMZN", "NVDA", "META", "V", "MA", "UNH", "NOW"];
 
@@ -116,6 +117,12 @@ export default function BlueChipWatchlist() {
                       <span>150 SMA: <strong className="text-text-primary">${q.sma150?.toFixed(0)}</strong></span>
                       <span>RSI: <strong className="text-text-primary">{q.rsi}</strong></span>
                     </div>
+                    <Link
+                      href={`/stock/${sym}`}
+                      className="flex items-center justify-center gap-1 rounded-lg bg-info/10 py-2 text-xs font-medium text-info hover:bg-info/20"
+                    >
+                      Full Analysis <ArrowRight size={12} />
+                    </Link>
                   </div>
                 )}
               </div>
