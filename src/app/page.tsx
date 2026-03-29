@@ -103,7 +103,7 @@ export default function Home() {
         )}
 
         {activeTab === "portfolio" && (
-          <PortfolioDashboard onTickerClick={handleAddTicker} />
+          <PortfolioDashboard />
         )}
       </main>
     </div>
