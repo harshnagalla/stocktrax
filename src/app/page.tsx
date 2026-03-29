@@ -71,9 +71,9 @@ export default function Home() {
       />
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 sm:max-w-2xl lg:max-w-4xl">
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 pb-20 sm:max-w-2xl sm:pb-4 lg:max-w-4xl">
         {activeTab === "market" && (
-          <MarketDashboard onTickerClick={handleAddTicker} />
+          <MarketDashboard />
         )}
 
         {activeTab === "analysis" && (

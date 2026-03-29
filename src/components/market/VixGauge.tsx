@@ -1,9 +1,7 @@
 "use client";
 
-import type { StockQuote } from "@/lib/data-service";
-
 interface VixGaugeProps {
-  vix: StockQuote | null;
+  vix: { price: number; changePercent: number } | undefined;
 }
 
 function getVixZone(level: number) {

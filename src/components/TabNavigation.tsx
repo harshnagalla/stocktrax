@@ -20,21 +20,42 @@ export default function TabNavigation({
   onTabChange,
 }: TabNavigationProps) {
   return (
-    <nav className="flex border-b border-border bg-white px-4">
-      {tabs.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => onTabChange(id)}
-          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${
-            activeTab === id
-              ? "border-b-2 border-text-primary text-text-primary"
-              : "text-text-secondary hover:text-text-primary"
-          }`}
-        >
-          <Icon size={15} />
-          {label}
-        </button>
-      ))}
-    </nav>
+    <>
+      {/* Desktop: top tabs */}
+      <nav className="hidden border-b border-border bg-white px-4 sm:flex">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => onTabChange(id)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === id
+                ? "border-b-2 border-text-primary text-text-primary"
+                : "text-text-secondary hover:text-text-primary"
+            }`}
+          >
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Mobile: bottom tab bar */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-border bg-white sm:hidden">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => onTabChange(id)}
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+              activeTab === id
+                ? "text-info"
+                : "text-text-secondary"
+            }`}
+          >
+            <Icon size={20} />
+            {label}
+          </button>
+        ))}
+      </nav>
+    </>
   );
 }

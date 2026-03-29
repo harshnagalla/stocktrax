@@ -1,10 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Server-side Yahoo Finance proxy — no CORS issues, no API keys exposed
-// GET /api/quotes?symbols=VOO,QQQ,MSFT
+// Server-side quote + analysis proxy
+// GET /api/quotes?symbols=VOO,QQQ,MSFT&analyze=true
+
+function calcSMA(closes: number[], period: number): number {
+  if (closes.length < period) return 0;
+  const slice = closes.slice(closes.length - period);
+  return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+function calcRSI(closes: number[], period: number = 14): number {
+  if (closes.length < period + 1) return 50;
+  let avgGain = 0, avgLoss = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) avgGain += diff;
+    else avgLoss -= diff;
+  }
+  avgGain /= period;
+  avgLoss /= period;
+  if (avgLoss === 0) return 100;
+  return 100 - 100 / (1 + avgGain / avgLoss);
+}
+
+function getSignal(price: number, sma50: number, sma150: number, sma200: number, rsi: number) {
+  if (sma50 === 0) return { signal: "HOLD", reason: "Not enough data", buyAt: null };
+
+  const aboveSma200 = price > sma200;
+  const sma50Above150 = sma50 > sma150;
+
+  if (!aboveSma200 && !sma50Above150) {
+    return { signal: "SELL", reason: `Downtrend. Below 200 SMA ($${sma200.toFixed(0)}).`, buyAt: null };
+  }
+  if (price > sma150 && sma50Above150) {
+    if (rsi < 35 || price < sma50 * 1.02) {
+      return { signal: "BUY", reason: `Near 50 SMA support ($${sma50.toFixed(0)}). RSI ${rsi}.`, buyAt: Math.round(sma50) };
+    }
+    return { signal: "HOLD", reason: `Uptrend. 50 SMA ($${sma50.toFixed(0)}) > 150 SMA.`, buyAt: null };
+  }
+  if (aboveSma200 && !sma50Above150) {
+    return { signal: "WATCH", reason: `Transitioning. Wait for 50/150 SMA crossover.`, buyAt: Math.round(sma150) };
+  }
+  if (!price && price < sma50) {
+    return { signal: "WATCH", reason: `Correction. Support at 150 SMA ($${sma150.toFixed(0)}).`, buyAt: Math.round(sma150) };
+  }
+  return { signal: "HOLD", reason: "Mixed signals.", buyAt: null };
+}
 
 export async function GET(request: NextRequest) {
   const symbols = request.nextUrl.searchParams.get("symbols");
+  const analyze = request.nextUrl.searchParams.get("analyze") === "true";
+
   if (!symbols) {
     return NextResponse.json({ error: "symbols param required" }, { status: 400 });
   }
@@ -14,79 +60,66 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "no valid symbols" }, { status: 400 });
   }
 
-  // Fetch all tickers in parallel via Yahoo chart endpoint
   const results: Record<string, unknown> = {};
+  const range = analyze ? "1y" : "5d";
 
   await Promise.all(
     tickers.map(async (symbol) => {
       try {
         const res = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=5d&interval=1d`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1d`,
           {
             headers: { "User-Agent": "Mozilla/5.0" },
-            next: { revalidate: 300 }, // cache for 5 min on Vercel edge
+            next: { revalidate: 300 },
           }
         );
         if (!res.ok) return;
         const data = await res.json();
-        const meta = data?.chart?.result?.[0]?.meta;
-        if (!meta) return;
+        const result = data?.chart?.result?.[0];
+        if (!result) return;
 
+        const meta = result.meta;
         const prev = meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice;
         const price = meta.regularMarketPrice ?? 0;
         const change = price - prev;
         const changePercent = prev > 0 ? (change / prev) * 100 : 0;
 
-        results[symbol] = {
+        const entry: Record<string, unknown> = {
           symbol,
           name: meta.longName ?? meta.shortName ?? symbol,
-          price,
+          price: Math.round(price * 100) / 100,
           change: Math.round(change * 100) / 100,
           changePercent: Math.round(changePercent * 100) / 100,
-          volume: meta.regularMarketVolume ?? 0,
           fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? 0,
           fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? 0,
           fiftyDayAverage: meta.fiftyDayAverage ?? 0,
           twoHundredDayAverage: meta.twoHundredDayAverage ?? 0,
         };
+
+        if (analyze) {
+          const ohlcv = result.indicators?.quote?.[0] ?? {};
+          const closes: number[] = (ohlcv.close ?? []).filter((c: number | null) => c != null);
+          const sma50 = calcSMA(closes, 50);
+          const sma150 = calcSMA(closes, 150);
+          const sma200 = calcSMA(closes, 200);
+          const rsi = calcRSI(closes);
+          const { signal, reason, buyAt } = getSignal(price, sma50, sma150, sma200, rsi);
+
+          entry.sma50 = Math.round(sma50 * 100) / 100;
+          entry.sma150 = Math.round(sma150 * 100) / 100;
+          entry.sma200 = Math.round(sma200 * 100) / 100;
+          entry.rsi = Math.round(rsi);
+          entry.signal = signal;
+          entry.reason = reason;
+          entry.buyAt = buyAt;
+        }
+
+        results[symbol] = entry;
       } catch {
-        // Skip failed symbols silently
+        // Skip failed
       }
     })
   );
-
-  // Fallback to Twelve Data if Yahoo fails
-  if (Object.keys(results).length === 0) {
-    const tdKey = process.env.NEXT_PUBLIC_TWELVE_DATA_API_KEY;
-    if (tdKey) {
-      try {
-        const res = await fetch(
-          `https://api.twelvedata.com/quote?symbol=${tickers.join(",")}&apikey=${tdKey}`
-        );
-        const data = await res.json();
-        // Twelve Data returns single object for 1 symbol, object of objects for multiple
-        const items = tickers.length === 1 ? { [tickers[0]]: data } : data;
-        for (const [sym, q] of Object.entries(items) as [string, Record<string, unknown>][]) {
-          if (q.status === "error") continue;
-          const ftw = q.fifty_two_week as Record<string, string> | undefined;
-          results[sym] = {
-            symbol: sym,
-            name: (q.name as string) ?? sym,
-            price: parseFloat((q.close as string) ?? "0"),
-            change: parseFloat((q.change as string) ?? "0"),
-            changePercent: parseFloat((q.percent_change as string) ?? "0"),
-            volume: parseInt((q.volume as string) ?? "0"),
-            fiftyTwoWeekLow: parseFloat(ftw?.low ?? "0"),
-            fiftyTwoWeekHigh: parseFloat(ftw?.high ?? "0"),
-            fiftyDayAverage: 0,
-            twoHundredDayAverage: 0,
-          };
-        }
-      } catch {
-        // Twelve Data also failed
-      }
-    }
-  }
 
   return NextResponse.json(results);
 }

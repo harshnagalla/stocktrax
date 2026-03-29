@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { getQuotes, getHistory, calculateSMA, type StockQuote, type HistoricalPrice } from "@/lib/data-service";
+import { getHistory, calculateSMA } from "@/lib/data-service";
 import {
   calculateSlope,
   calculateSentimentScore,
@@ -16,16 +16,29 @@ import TreasuryCard from "./TreasuryCard";
 import FearGreedGauge from "./FearGreedGauge";
 import BlueChipWatchlist from "./BlueChipWatchlist";
 
-interface MarketDashboardProps {
-  onTickerClick?: (ticker: string) => void;
+interface QuoteWithAnalysis {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  fiftyTwoWeekLow: number;
+  fiftyTwoWeekHigh: number;
+  sma50?: number;
+  sma150?: number;
+  sma200?: number;
+  rsi?: number;
+  signal?: string;
+  reason?: string;
+  buyAt?: number | null;
 }
 
 interface MarketState {
-  quotes: Record<string, StockQuote>;
-  spxHistory: HistoricalPrice[];
+  quotes: Record<string, QuoteWithAnalysis>;
+  spxCloses: number[];
 }
 
-export default function MarketDashboard({ onTickerClick }: MarketDashboardProps) {
+export default function MarketDashboard() {
   const [data, setData] = useState<MarketState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,30 +48,28 @@ export default function MarketDashboard({ onTickerClick }: MarketDashboardProps)
     setLoading(true);
 
     Promise.all([
-      getQuotes(["VOO", "QQQ", "VTWO", "^VIX", "^TNX"]),
+      fetch("/api/quotes?symbols=VOO,QQQ,VTWO,%5EVIX,%5ETNX&analyze=true").then((r) => r.json()),
       getHistory("^GSPC"),
     ])
       .then(([quotes, spxHistory]) => {
-        if (!cancelled) setData({ quotes, spxHistory });
+        if (!cancelled) {
+          const spxCloses = spxHistory.map((p: { close: number }) => p.close);
+          setData({ quotes, spxCloses });
+        }
       })
-      .catch(() => {
-        if (!cancelled) setError("Failed to load market data. Yahoo Finance may be blocked.");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+      .catch(() => { if (!cancelled) setError("Failed to load market data"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
   }, []);
 
   const sentiment = useMemo(() => {
-    if (!data) return null;
+    if (!data || data.spxCloses.length === 0) return null;
 
     const vixQuote = data.quotes["^VIX"];
     const vixLevel = vixQuote?.price ?? 20;
 
-    // Calculate SMAs from SPX history
-    const closes = data.spxHistory.map((p) => p.close).reverse(); // oldest first
+    const closes = data.spxCloses;
     const sma50Arr = calculateSMA(closes, 50);
     const sma150Arr = calculateSMA(closes, 150);
     const sma200Arr = calculateSMA(closes, 200);
@@ -68,14 +79,11 @@ export default function MarketDashboard({ onTickerClick }: MarketDashboardProps)
     const sma150 = sma150Arr[sma150Arr.length - 1] ?? 0;
     const sma200 = sma200Arr[sma200Arr.length - 1] ?? 0;
 
-    // Calculate slopes (newest first for slope function)
     const slope50 = calculateSlope([...sma50Arr].reverse());
     const slope150 = calculateSlope([...sma150Arr].reverse());
     const slope200 = calculateSlope([...sma200Arr].reverse());
 
     const regime = getMarketRegime(spxPrice, sma50, sma150, sma200, slope50, slope150, slope200);
-
-    // Fake sectors for sentiment calc (we don't have sector data from Yahoo)
     return { ...calculateSentimentScore(vixLevel, regime, []), regime, sma50, sma150, sma200, slope50, slope150, slope200, spxPrice };
   }, [data]);
 
@@ -88,21 +96,13 @@ export default function MarketDashboard({ onTickerClick }: MarketDashboardProps)
     );
   }
 
-  if (error) {
+  if (error || !data) {
     return (
       <div className="rounded-2xl bg-bearish/5 p-8 text-center text-sm text-bearish">
-        {error}
+        {error ?? "No data"}
       </div>
     );
   }
-
-  if (!data) return null;
-
-  const voo = data.quotes["VOO"] ?? null;
-  const qqq = data.quotes["QQQ"] ?? null;
-  const vtwo = data.quotes["VTWO"] ?? null;
-  const vix = data.quotes["^VIX"] ?? null;
-  const tnx = data.quotes["^TNX"] ?? null;
 
   return (
     <div className="space-y-3">
@@ -115,10 +115,14 @@ export default function MarketDashboard({ onTickerClick }: MarketDashboardProps)
         />
       )}
 
-      <IndexBar voo={voo} qqq={qqq} vtwo={vtwo} />
+      <IndexBar
+        voo={data.quotes["VOO"]}
+        qqq={data.quotes["QQQ"]}
+        vtwo={data.quotes["VTWO"]}
+      />
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <VixGauge vix={vix} />
+        <VixGauge vix={data.quotes["^VIX"]} />
         {sentiment && (
           <SpxTrendCard
             regime={sentiment.regime}
@@ -131,11 +135,11 @@ export default function MarketDashboard({ onTickerClick }: MarketDashboardProps)
             slope200={sentiment.slope200}
           />
         )}
-        <TreasuryCard tnx={tnx} />
+        <TreasuryCard tnx={data.quotes["^TNX"]} />
         <FearGreedGauge />
       </div>
 
-      <BlueChipWatchlist onTickerClick={onTickerClick} />
+      <BlueChipWatchlist />
     </div>
   );
 }

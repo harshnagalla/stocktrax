@@ -1,9 +1,7 @@
 "use client";
 
-import type { StockQuote } from "@/lib/data-service";
-
 interface TreasuryCardProps {
-  tnx: StockQuote | null;
+  tnx: { price: number; changePercent: number } | undefined;
 }
 
 export default function TreasuryCard({ tnx }: TreasuryCardProps) {
