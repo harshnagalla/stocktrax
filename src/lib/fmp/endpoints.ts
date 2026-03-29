@@ -10,10 +10,9 @@ function today(): string {
 
 export function marketEndpoints(apiKey: string) {
   return {
-    sp500: `${BASE_STABLE}/quote?symbol=^GSPC&apikey=${apiKey}`,
-    nasdaq: `${BASE_STABLE}/quote?symbol=^IXIC&apikey=${apiKey}`,
-    dowJones: `${BASE_STABLE}/quote?symbol=^DJI&apikey=${apiKey}`,
-    russell: `${BASE_STABLE}/quote?symbol=^RUT&apikey=${apiKey}`,
+    voo: `${BASE_V3}/quote/VOO?apikey=${apiKey}`,
+    qqq: `${BASE_V3}/quote/QQQ?apikey=${apiKey}`,
+    vtwo: `${BASE_V3}/quote/VTWO?apikey=${apiKey}`,
     vix: `${BASE_STABLE}/quote?symbol=^VIX&apikey=${apiKey}`,
     treasury: `${BASE_STABLE}/quote?symbol=^TNX&apikey=${apiKey}`,
     sectors: `${BASE_V3}/sectors-performance?apikey=${apiKey}`,

@@ -250,10 +250,9 @@ export interface FMPSectorPE {
 // ─── Aggregate Data Types ────────────────────────────────────────
 
 export interface MarketData {
-  sp500: FMPQuote | null;
-  nasdaq: FMPQuote | null;
-  dowJones: FMPQuote | null;
-  russell: FMPQuote | null;
+  voo: FMPQuote | null;
+  qqq: FMPQuote | null;
+  vtwo: FMPQuote | null;
   vix: FMPQuote | null;
   treasury: FMPQuote | null;
   sectors: FMPSectorPerformance[];

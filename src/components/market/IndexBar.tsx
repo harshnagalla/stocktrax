@@ -4,18 +4,28 @@ import type { FMPQuote } from "@/lib/fmp/types";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface IndexBarProps {
-  sp500: FMPQuote | null;
-  nasdaq: FMPQuote | null;
-  dowJones: FMPQuote | null;
-  russell: FMPQuote | null;
+  voo: FMPQuote | null;
+  qqq: FMPQuote | null;
+  vtwo: FMPQuote | null;
 }
 
-function IndexCard({ label, quote }: { label: string; quote: FMPQuote | null }) {
+function IndexCard({
+  ticker,
+  label,
+  quote,
+}: {
+  ticker: string;
+  label: string;
+  quote: FMPQuote | null;
+}) {
   if (!quote) {
     return (
-      <div className="rounded-2xl bg-bg-surface p-3">
-        <div className="text-xs font-medium text-text-secondary">{label}</div>
-        <div className="mt-1 text-lg font-semibold text-text-secondary">--</div>
+      <div className="rounded-2xl bg-bg-surface p-4">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-bold">{ticker}</span>
+          <span className="text-xs text-text-secondary">{label}</span>
+        </div>
+        <div className="mt-2 text-2xl font-bold text-text-secondary">--</div>
       </div>
     );
   }
@@ -25,13 +35,16 @@ function IndexCard({ label, quote }: { label: string; quote: FMPQuote | null }) 
   const Icon = positive ? TrendingUp : TrendingDown;
 
   return (
-    <div className="rounded-2xl bg-bg-surface p-3">
-      <div className="text-xs font-medium text-text-secondary">{label}</div>
-      <div className="mt-1 text-lg font-bold text-text-primary">
+    <div className="rounded-2xl bg-bg-surface p-4">
+      <div className="flex items-baseline gap-2">
+        <span className="text-sm font-bold">{ticker}</span>
+        <span className="text-xs text-text-secondary">{label}</span>
+      </div>
+      <div className="mt-2 text-2xl font-bold">
         ${quote.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "--"}
       </div>
-      <div className={`mt-0.5 flex items-center gap-1 text-xs font-semibold ${color}`}>
-        <Icon size={12} />
+      <div className={`mt-1 flex items-center gap-1 text-sm font-semibold ${color}`}>
+        <Icon size={14} />
         {quote.changesPercentage != null
           ? `${quote.changesPercentage >= 0 ? "+" : ""}${quote.changesPercentage.toFixed(2)}%`
           : "--"}
@@ -40,13 +53,12 @@ function IndexCard({ label, quote }: { label: string; quote: FMPQuote | null }) 
   );
 }
 
-export default function IndexBar({ sp500, nasdaq, dowJones, russell }: IndexBarProps) {
+export default function IndexBar({ voo, qqq, vtwo }: IndexBarProps) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      <IndexCard label="S&P 500" quote={sp500} />
-      <IndexCard label="Nasdaq" quote={nasdaq} />
-      <IndexCard label="Dow Jones" quote={dowJones} />
-      <IndexCard label="Russell 2000" quote={russell} />
+    <div className="grid grid-cols-3 gap-2">
+      <IndexCard ticker="VOO" label="S&P 500" quote={voo} />
+      <IndexCard ticker="QQQ" label="Nasdaq 100" quote={qqq} />
+      <IndexCard ticker="VTWO" label="Russell 2000" quote={vtwo} />
     </div>
   );
 }

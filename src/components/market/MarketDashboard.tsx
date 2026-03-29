@@ -104,10 +104,9 @@ export default function MarketDashboard({
       )}
 
       <IndexBar
-        sp500={data.sp500}
-        nasdaq={data.nasdaq}
-        dowJones={data.dowJones}
-        russell={data.russell}
+        voo={data.voo}
+        qqq={data.qqq}
+        vtwo={data.vtwo}
       />
 
       {/* Gauges row */}

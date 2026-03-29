@@ -87,10 +87,9 @@ export function createFMPClient(apiKey: string): FMPClient {
     const ep = marketEndpoints(apiKey);
 
     const results = await Promise.allSettled([
-      fetchJSON<FMPQuote[]>(ep.sp500, "market:sp500"),
-      fetchJSON<FMPQuote[]>(ep.nasdaq, "market:nasdaq"),
-      fetchJSON<FMPQuote[]>(ep.dowJones, "market:dowJones"),
-      fetchJSON<FMPQuote[]>(ep.russell, "market:russell"),
+      fetchJSON<FMPQuote[]>(ep.voo, "market:voo"),
+      fetchJSON<FMPQuote[]>(ep.qqq, "market:qqq"),
+      fetchJSON<FMPQuote[]>(ep.vtwo, "market:vtwo"),
       fetchJSON<FMPQuote[]>(ep.vix, "market:vix"),
       fetchJSON<FMPQuote[]>(ep.treasury, "market:treasury"),
       fetchJSON<FMPSectorPerformance[]>(ep.sectors, "market:sectors"),
@@ -112,23 +111,22 @@ export function createFMPClient(apiKey: string): FMPClient {
     );
 
     return {
-      sp500: first(v[0] as FMPQuote[] | null),
-      nasdaq: first(v[1] as FMPQuote[] | null),
-      dowJones: first(v[2] as FMPQuote[] | null),
-      russell: first(v[3] as FMPQuote[] | null),
-      vix: first(v[4] as FMPQuote[] | null),
-      treasury: first(v[5] as FMPQuote[] | null),
-      sectors: (v[6] as FMPSectorPerformance[] | null) ?? [],
-      gainers: (v[7] as FMPMarketMover[] | null) ?? [],
-      losers: (v[8] as FMPMarketMover[] | null) ?? [],
-      actives: (v[9] as FMPMarketMover[] | null) ?? [],
-      econCalendar: (v[10] as FMPEconomicEvent[] | null) ?? [],
-      treasuryRates: first(v[11] as FMPTreasuryRate[] | null),
-      spxHistory: extractHistorical(v[12] as FMPHistoricalResponse | null),
-      spxSma50: (v[13] as FMPTechnicalIndicator[] | null) ?? [],
-      spxSma150: (v[14] as FMPTechnicalIndicator[] | null) ?? [],
-      spxSma200: (v[15] as FMPTechnicalIndicator[] | null) ?? [],
-      spxRsi: (v[16] as FMPTechnicalIndicator[] | null) ?? [],
+      voo: first(v[0] as FMPQuote[] | null),
+      qqq: first(v[1] as FMPQuote[] | null),
+      vtwo: first(v[2] as FMPQuote[] | null),
+      vix: first(v[3] as FMPQuote[] | null),
+      treasury: first(v[4] as FMPQuote[] | null),
+      sectors: (v[5] as FMPSectorPerformance[] | null) ?? [],
+      gainers: (v[6] as FMPMarketMover[] | null) ?? [],
+      losers: (v[7] as FMPMarketMover[] | null) ?? [],
+      actives: (v[8] as FMPMarketMover[] | null) ?? [],
+      econCalendar: (v[9] as FMPEconomicEvent[] | null) ?? [],
+      treasuryRates: first(v[10] as FMPTreasuryRate[] | null),
+      spxHistory: extractHistorical(v[11] as FMPHistoricalResponse | null),
+      spxSma50: (v[12] as FMPTechnicalIndicator[] | null) ?? [],
+      spxSma150: (v[13] as FMPTechnicalIndicator[] | null) ?? [],
+      spxSma200: (v[14] as FMPTechnicalIndicator[] | null) ?? [],
+      spxRsi: (v[15] as FMPTechnicalIndicator[] | null) ?? [],
     };
   }
 
