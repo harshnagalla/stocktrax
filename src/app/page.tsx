@@ -20,11 +20,11 @@ export default function Home() {
   const [tickerDataMap, setTickerDataMap] = useState<Record<string, TickerData>>({});
   const [loadingTickers, setLoadingTickers] = useState<Set<string>>(new Set());
 
-  const { client, requestCount, updateRequestCount } = useFMPClient(apiKey);
+  const { client, requestCount, updateRequestCount, isDemo } = useFMPClient(apiKey);
 
   const handleAddTicker = useCallback(
     async (ticker: string) => {
-      if (!client || tickers.includes(ticker) || tickers.length >= 4) return;
+      if (tickers.includes(ticker) || tickers.length >= 4) return;
 
       setTickers((prev) => [...prev, ticker]);
       setLoadingTickers((prev) => new Set(prev).add(ticker));
@@ -63,6 +63,11 @@ export default function Home() {
         onApiKeyChange={setApiKey}
         requestCount={requestCount}
       />
+      {isDemo && (
+        <div className="border-b border-info/20 bg-info/5 px-4 py-1.5 text-center text-xs text-info">
+          Demo mode — using simulated data. Enter an FMP API key for live market data.
+        </div>
+      )}
       <TickerSearch
         tickers={tickers}
         onAddTicker={handleAddTicker}

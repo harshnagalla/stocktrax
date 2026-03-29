@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import type { FMPClient } from "@/lib/fmp/client";
 import type { FMPQuote } from "@/lib/fmp/types";
 import { HOLDINGS, UNIQUE_TICKERS, type Holding } from "./holdings";
-import { batchQuoteUrl } from "@/lib/fmp/endpoints";
 import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
 
 interface PortfolioDashboardProps {
-  client: FMPClient | null;
+  client: FMPClient;
   onRequestCountUpdate: () => void;
   onTickerClick?: (ticker: string) => void;
 }
@@ -30,16 +29,13 @@ export default function PortfolioDashboard({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!client) return;
     let cancelled = false;
     setLoading(true);
 
-    // Batch fetch all portfolio tickers in one call via stable API
-    const apiKey = process.env.NEXT_PUBLIC_FMP_API_KEY ?? "";
-    fetch(batchQuoteUrl(UNIQUE_TICKERS, apiKey))
-      .then((res) => res.json())
+    client
+      .fetchBatchQuotes(UNIQUE_TICKERS)
       .then((data) => {
-        if (cancelled || !Array.isArray(data)) return;
+        if (cancelled) return;
         const map: Record<string, FMPQuote> = {};
         for (const q of data) {
           map[q.symbol] = q;
@@ -54,14 +50,6 @@ export default function PortfolioDashboard({
 
     return () => { cancelled = true; };
   }, [client, onRequestCountUpdate]);
-
-  if (!client) {
-    return (
-      <div className="rounded-2xl bg-bg-surface p-8 text-center text-sm text-text-secondary">
-        Enter your FMP API key to load portfolio
-      </div>
-    );
-  }
 
   if (loading) {
     return (

@@ -35,6 +35,7 @@ export interface FMPClient {
   clearCache: () => void;
   fetchMarketData: () => Promise<MarketData>;
   fetchTickerData: (ticker: string) => Promise<TickerData>;
+  fetchBatchQuotes: (tickers: string[]) => Promise<FMPQuote[]>;
 }
 
 export function createFMPClient(apiKey: string): FMPClient {
@@ -175,11 +176,18 @@ export function createFMPClient(apiKey: string): FMPClient {
     };
   }
 
+  async function fetchBatchQuotes(tickers: string[]): Promise<FMPQuote[]> {
+    const url = `https://financialmodelingprep.com/stable/quote?symbol=${tickers.join(",")}&apikey=${apiKey}`;
+    const data = await fetchJSON<FMPQuote[]>(url, `batch:${tickers.join(",")}`);
+    return data ?? [];
+  }
+
   return {
     getRequestCount: () => requestCount,
     resetRequestCount: () => { requestCount = 0; },
     clearCache: () => { cache.clear(); },
     fetchMarketData,
     fetchTickerData,
+    fetchBatchQuotes,
   };
 }

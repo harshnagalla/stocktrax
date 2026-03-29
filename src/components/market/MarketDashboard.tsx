@@ -21,7 +21,7 @@ import BlueChipWatchlist from "./BlueChipWatchlist";
 import EconomicCalendar from "./EconomicCalendar";
 
 interface MarketDashboardProps {
-  client: FMPClient | null;
+  client: FMPClient;
   onRequestCountUpdate: () => void;
   onTickerClick?: (ticker: string) => void;
 }
@@ -65,14 +65,6 @@ export default function MarketDashboard({
     );
     return calculateSentimentScore(vixLevel, regime, data.sectors);
   }, [data]);
-
-  if (!client) {
-    return (
-      <div className="rounded-2xl bg-bg-surface p-8 text-center text-sm text-text-secondary">
-        Enter your FMP API key to load market data
-      </div>
-    );
-  }
 
   if (loading) {
     return (
