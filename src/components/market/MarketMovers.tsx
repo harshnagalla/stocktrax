@@ -13,10 +13,7 @@ interface MarketMoversProps {
 }
 
 export default function MarketMovers({
-  gainers,
-  losers,
-  actives,
-  onTickerClick,
+  gainers, losers, actives, onTickerClick,
 }: MarketMoversProps) {
   const [tab, setTab] = useState<MoverTab>("gainers");
 
@@ -26,19 +23,18 @@ export default function MarketMovers({
     { id: "actives", label: "Active" },
   ];
 
-  const items =
-    tab === "gainers" ? gainers : tab === "losers" ? losers : actives;
+  const items = tab === "gainers" ? gainers : tab === "losers" ? losers : actives;
 
   return (
-    <div className="rounded-lg border border-border bg-bg-surface p-4">
-      <div className="mb-3 flex gap-2">
+    <div className="rounded-2xl bg-bg-surface p-5">
+      <div className="mb-3 flex gap-1">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               tab === t.id
-                ? "bg-info/20 text-info"
+                ? "bg-text-primary text-white"
                 : "text-text-secondary hover:text-text-primary"
             }`}
           >
@@ -47,32 +43,23 @@ export default function MarketMovers({
         ))}
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-2">
         {items.slice(0, 5).map((m) => {
           const pct = m.changesPercentage ?? 0;
           const positive = pct >= 0;
           return (
-            <div
-              key={m.symbol}
-              className="flex items-center justify-between text-xs"
-            >
+            <div key={m.symbol} className="flex items-center justify-between">
               <button
                 onClick={() => onTickerClick?.(m.symbol)}
-                className="font-bold text-info hover:underline"
+                className="text-sm font-bold text-info hover:underline"
               >
                 {m.symbol}
               </button>
-              <span className="flex-1 truncate px-2 text-[10px] text-text-secondary">
+              <span className="flex-1 truncate px-2 text-xs text-text-secondary">
                 {m.name}
               </span>
-              <span className="text-text-primary">
-                ${m.price?.toFixed(2) ?? "--"}
-              </span>
-              <span
-                className={`ml-2 w-16 text-right ${positive ? "text-bullish" : "text-bearish"}`}
-              >
-                {positive ? "+" : ""}
-                {pct.toFixed(2)}%
+              <span className={`text-sm font-semibold ${positive ? "text-bullish" : "text-bearish"}`}>
+                {positive ? "+" : ""}{pct.toFixed(1)}%
               </span>
             </div>
           );

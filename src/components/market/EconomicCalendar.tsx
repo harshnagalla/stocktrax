@@ -12,43 +12,27 @@ export default function EconomicCalendar({ events }: EconomicCalendarProps) {
   const upcoming = events
     .filter((e) => e.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 7);
+    .slice(0, 5);
+
+  if (upcoming.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-bg-surface p-4">
-      <div className="mb-3 text-xs text-text-secondary">
-        Economic Calendar
+    <div className="rounded-2xl bg-bg-surface p-5">
+      <div className="mb-3 text-xs font-medium text-text-secondary">Economic Calendar</div>
+      <div className="space-y-2">
+        {upcoming.map((e, i) => (
+          <div key={`${e.date}-${i}`} className="flex items-center gap-2 text-xs">
+            {e.impact === "High" && (
+              <span className="h-1.5 w-1.5 rounded-full bg-bearish shrink-0" />
+            )}
+            {e.impact !== "High" && (
+              <span className="h-1.5 w-1.5 rounded-full bg-border shrink-0" />
+            )}
+            <span className="shrink-0 text-text-secondary w-12">{e.date.slice(5)}</span>
+            <span className="flex-1 truncate font-medium">{e.event}</span>
+          </div>
+        ))}
       </div>
-
-      {upcoming.length === 0 ? (
-        <div className="text-xs text-text-secondary">No upcoming events</div>
-      ) : (
-        <div className="space-y-1.5">
-          {upcoming.map((e, i) => (
-            <div key={`${e.date}-${e.event}-${i}`} className="flex items-start gap-2 text-xs">
-              <div className="flex items-center gap-1 shrink-0 w-20">
-                {e.impact === "High" && (
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-bearish shrink-0" />
-                )}
-                <span className="text-text-secondary text-[10px]">
-                  {e.date.slice(5)}
-                </span>
-              </div>
-              <div className="flex-1 truncate text-text-primary">
-                {e.event}
-              </div>
-              <div className="shrink-0 text-right text-[10px] text-text-secondary w-24">
-                {e.actual != null && (
-                  <span className="text-text-primary">{e.actual}</span>
-                )}
-                {e.estimate != null && (
-                  <span className="ml-1">est: {e.estimate}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

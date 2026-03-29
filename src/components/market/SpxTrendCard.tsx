@@ -35,71 +35,48 @@ export default function SpxTrendCard({
   const slope200 = calculateSlope(sma200Values);
 
   const regime = getMarketRegime(
-    spxPrice,
-    currentSma50,
-    currentSma150,
-    currentSma200,
-    slope50,
-    slope150,
-    slope200
+    spxPrice, currentSma50, currentSma150, currentSma200,
+    slope50, slope150, slope200
   );
 
   const hasData = spxPrice > 0 && currentSma50 > 0;
 
+  const biasColors: Record<string, string> = {
+    LONG: "bg-bullish/15 text-bullish",
+    SHORT: "bg-bearish/15 text-bearish",
+    "NEUTRAL/CASH": "bg-neutral/15 text-neutral",
+  };
+
   return (
-    <div className="rounded-lg border border-border bg-bg-surface p-4">
-      <div className="mb-2 text-xs text-text-secondary">
-        S&P 500 Trend — Adam Khoo Method
-      </div>
+    <div className="rounded-2xl bg-bg-surface p-5">
+      <div className="text-xs font-medium text-text-secondary">S&P 500 Trend</div>
 
       {hasData ? (
         <>
-          <div className={`text-lg font-bold ${regime.color}`}>
+          <div className={`mt-1 text-lg font-bold ${regime.color}`}>
             {regime.regime}
           </div>
-          <div className="mt-1 mb-3">
-            <span
-              className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${
-                regime.bias === "LONG"
-                  ? "bg-bullish/20 text-bullish"
-                  : regime.bias === "SHORT"
-                    ? "bg-bearish/20 text-bearish"
-                    : "bg-neutral/20 text-neutral"
-              }`}
-            >
-              Bias: {regime.bias}
-            </span>
-          </div>
+          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${biasColors[regime.bias]}`}>
+            {regime.bias}
+          </span>
 
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between">
-              <span className="text-text-secondary">SPX</span>
-              <span className="text-text-primary">
-                {spxPrice.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-secondary">50 SMA</span>
-              <span className="text-text-primary">
-                {currentSma50.toFixed(2)} {getSlopeArrow(slope50)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-secondary">150 SMA</span>
-              <span className="text-text-primary">
-                {currentSma150.toFixed(2)} {getSlopeArrow(slope150)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-secondary">200 SMA</span>
-              <span className="text-text-primary">
-                {currentSma200.toFixed(2)} {getSlopeArrow(slope200)}
-              </span>
-            </div>
+          <div className="mt-3 space-y-1 text-xs">
+            {[
+              { label: "50 SMA", val: currentSma50, slope: slope50 },
+              { label: "150 SMA", val: currentSma150, slope: slope150 },
+              { label: "200 SMA", val: currentSma200, slope: slope200 },
+            ].map((row) => (
+              <div key={row.label} className="flex justify-between">
+                <span className="text-text-secondary">{row.label}</span>
+                <span className="font-semibold">
+                  {row.val.toFixed(0)} {getSlopeArrow(row.slope)}
+                </span>
+              </div>
+            ))}
           </div>
         </>
       ) : (
-        <div className="text-sm text-text-secondary">--</div>
+        <div className="mt-1 text-lg font-bold text-text-secondary">--</div>
       )}
     </div>
   );

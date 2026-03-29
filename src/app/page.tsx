@@ -70,7 +70,7 @@ export default function Home() {
       />
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <main className="flex-1 p-4">
+      <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 sm:max-w-2xl lg:max-w-4xl">
         {activeTab === "market" && (
           <MarketDashboard
             client={client}
@@ -81,13 +81,13 @@ export default function Home() {
         {activeTab === "analysis" && (
           <>
             {tickers.length === 0 ? (
-              <div className="rounded-lg border border-border bg-bg-surface p-8 text-center text-text-secondary">
-                Enter a ticker in the search bar to begin analysis
+              <div className="rounded-2xl bg-bg-surface p-10 text-center text-sm text-text-secondary">
+                Search for a stock ticker above to start your analysis
               </div>
             ) : loadingTickers.size > 0 && Object.keys(tickerDataMap).length === 0 ? (
-              <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-bg-surface p-12 text-text-secondary">
+              <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-12 text-text-secondary">
                 <Loader2 size={18} className="animate-spin" />
-                Loading ticker data...
+                <span className="text-sm">Loading ticker data...</span>
               </div>
             ) : (
               <AnalysisDashboard
@@ -100,17 +100,13 @@ export default function Home() {
         )}
 
         {activeTab === "compare" && (
-          <div className="rounded-lg border border-border bg-bg-surface p-8 text-center text-text-secondary">
+          <div className="rounded-2xl bg-bg-surface p-10 text-center text-sm text-text-secondary">
             {tickers.length < 2
-              ? "Add 2+ tickers to compare side by side"
-              : `Comparing: ${tickers.join(" vs ")} — coming in Phase 6`}
+              ? "Add 2+ tickers to compare them side by side"
+              : `Comparing: ${tickers.join(" vs ")} — coming soon`}
           </div>
         )}
       </main>
-
-      <footer className="border-t border-border px-4 py-2 text-center text-[10px] text-text-secondary">
-        StockTrax — Adam Khoo VMI & Profit Snapper Analysis
-      </footer>
     </div>
   );
 }
