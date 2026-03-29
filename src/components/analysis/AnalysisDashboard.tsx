@@ -2,6 +2,10 @@
 
 import type { TickerData } from "@/lib/fmp/types";
 import StockHeader from "./StockHeader";
+import VMISection from "./VMISection";
+import TechnicalSection from "./TechnicalSection";
+import VerdictSection from "./VerdictSection";
+import ComparisonTable from "./ComparisonTable";
 
 interface AnalysisDashboardProps {
   tickerData: TickerData[];
@@ -16,20 +20,19 @@ export default function AnalysisDashboard({
         <div key={data.ticker} className="space-y-4">
           <StockHeader data={data} />
 
-          {/* Placeholder sections for future phases */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-lg border border-border bg-bg-surface p-4 text-center text-xs text-text-secondary">
-              VMI Score — Phase 4
-            </div>
-            <div className="rounded-lg border border-border bg-bg-surface p-4 text-center text-xs text-text-secondary">
-              Technical Analysis — Phase 5
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-bg-surface p-4 text-center text-xs text-text-secondary">
-            Adam Khoo Verdict — Phase 6
-          </div>
+          {/* VMI Score Engine — Phase 4 */}
+          <VMISection data={data} />
+
+          {/* Technical Analysis — Phase 5 */}
+          <TechnicalSection data={data} />
+
+          {/* Verdicts & Analyst Sentiment — Phase 6 */}
+          <VerdictSection data={data} />
         </div>
       ))}
+
+      {/* Side-by-Side Comparison (only when 2+ tickers) */}
+      <ComparisonTable tickerData={tickerData} />
     </div>
   );
 }
