@@ -7,6 +7,7 @@ import TickerSearch from "@/components/TickerSearch";
 import { useFMPClient } from "@/hooks/useFMPClient";
 import type { TickerData } from "@/lib/fmp/types";
 import MarketDashboard from "@/components/market/MarketDashboard";
+import AnalysisDashboard from "@/components/analysis/AnalysisDashboard";
 import { Loader2 } from "lucide-react";
 
 export default function Home() {
@@ -76,44 +77,24 @@ export default function Home() {
         )}
 
         {activeTab === "analysis" && (
-          <div className="space-y-4">
+          <>
             {tickers.length === 0 ? (
               <div className="rounded-lg border border-border bg-bg-surface p-8 text-center text-text-secondary">
                 Enter a ticker in the search bar to begin analysis
               </div>
+            ) : loadingTickers.size > 0 && Object.keys(tickerDataMap).length === 0 ? (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-bg-surface p-12 text-text-secondary">
+                <Loader2 size={18} className="animate-spin" />
+                Loading ticker data...
+              </div>
             ) : (
-              tickers.map((t) => (
-                <div
-                  key={t}
-                  className="rounded-lg border border-border bg-bg-surface p-6"
-                >
-                  {loadingTickers.has(t) ? (
-                    <div className="flex items-center justify-center gap-2 text-text-secondary">
-                      <Loader2 size={16} className="animate-spin" />
-                      Loading {t}...
-                    </div>
-                  ) : tickerDataMap[t] ? (
-                    <div className="text-sm text-text-primary">
-                      <span className="font-bold text-info">{t}</span>
-                      <span className="ml-2 text-text-secondary">
-                        {tickerDataMap[t].profile?.companyName ?? ""}
-                      </span>
-                      <span className="ml-2">
-                        ${tickerDataMap[t].quote?.price?.toFixed(2) ?? "--"}
-                      </span>
-                      <span className="ml-4 text-[10px] text-text-secondary">
-                        StockHeader + VMI Score coming in Plan 03-02 & Phase 4
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-text-secondary">
-                      No data for {t}
-                    </div>
-                  )}
-                </div>
-              ))
+              <AnalysisDashboard
+                tickerData={tickers
+                  .filter((t) => tickerDataMap[t])
+                  .map((t) => tickerDataMap[t])}
+              />
             )}
-          </div>
+          </>
         )}
 
         {activeTab === "compare" && (
