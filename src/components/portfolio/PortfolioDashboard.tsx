@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { HOLDINGS, type Holding } from "./holdings";
-import { Loader2, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 
 interface QuoteData {
   price: number;
@@ -27,6 +27,17 @@ interface EnrichedHolding extends Holding {
   pnlPct: number;
 }
 
+interface AiAnalysis {
+  action: string;
+  confidence: string;
+  moat: string;
+  dropReason: string;
+  dropExplanation: string;
+  intrinsicValue: number | null;
+  buyAtPrice: number | null;
+  summary: string;
+}
+
 const SIGNAL_STYLES: Record<string, { bg: string; text: string }> = {
   "BUY MORE": { bg: "bg-bullish/15", text: "text-bullish" },
   HOLD: { bg: "bg-info/10", text: "text-info" },
@@ -38,6 +49,8 @@ export default function PortfolioDashboard() {
   const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [aiAnalysis, setAiAnalysis] = useState<Record<string, AiAnalysis>>({});
+  const [aiLoading, setAiLoading] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +72,21 @@ export default function PortfolioDashboard() {
       return next;
     });
   }
+
+  const fetchAiAnalysis = useCallback(async (ticker: string) => {
+    if (aiAnalysis[ticker] || aiLoading.has(ticker)) return;
+    setAiLoading((prev) => new Set(prev).add(ticker));
+    try {
+      const res = await fetch(`/api/analysis?symbol=${ticker}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAiAnalysis((prev) => ({ ...prev, [ticker]: data }));
+      }
+    } catch { /* skip */ }
+    finally {
+      setAiLoading((prev) => { const next = new Set(prev); next.delete(ticker); return next; });
+    }
+  }, [aiAnalysis, aiLoading]);
 
   if (loading) {
     return (
@@ -203,6 +231,58 @@ export default function PortfolioDashboard() {
                 P&L: {positive ? "+" : ""}${h.pnl.toFixed(0)}
               </span>
             </div>
+
+            {/* AI Deep Analysis */}
+            {aiAnalysis[h.ticker] ? (
+              <div className="rounded-lg bg-info/5 p-3 space-y-2 text-xs">
+                <div className="flex items-center gap-1.5 font-semibold text-info">
+                  <Sparkles size={12} />
+                  Adam Khoo Analysis
+                </div>
+                <p className="leading-relaxed">{aiAnalysis[h.ticker].summary}</p>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div>
+                    <span className="text-text-secondary">Moat: </span>
+                    <span>{aiAnalysis[h.ticker].moat}</span>
+                  </div>
+                  <div>
+                    <span className="text-text-secondary">Drop type: </span>
+                    <span className={aiAnalysis[h.ticker].dropReason === "SENTIMENT" ? "text-bullish" : aiAnalysis[h.ticker].dropReason === "STRUCTURAL" ? "text-bearish" : ""}>
+                      {aiAnalysis[h.ticker].dropReason}
+                    </span>
+                  </div>
+                  {aiAnalysis[h.ticker].intrinsicValue && (
+                    <div>
+                      <span className="text-text-secondary">Intrinsic value: </span>
+                      <span className="font-bold">${aiAnalysis[h.ticker].intrinsicValue}</span>
+                    </div>
+                  )}
+                  {aiAnalysis[h.ticker].buyAtPrice && (
+                    <div>
+                      <span className="text-text-secondary">Buy at: </span>
+                      <span className="font-bold text-bullish">${aiAnalysis[h.ticker].buyAtPrice}</span>
+                    </div>
+                  )}
+                </div>
+                {aiAnalysis[h.ticker].dropExplanation && (
+                  <p className="text-[10px] text-text-secondary leading-relaxed">
+                    {aiAnalysis[h.ticker].dropExplanation}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => fetchAiAnalysis(h.ticker)}
+                disabled={aiLoading.has(h.ticker)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-info/10 py-2 text-xs font-medium text-info transition-colors hover:bg-info/20 disabled:opacity-50"
+              >
+                {aiLoading.has(h.ticker) ? (
+                  <><Loader2 size={12} className="animate-spin" /> Analyzing...</>
+                ) : (
+                  <><Sparkles size={12} /> Deep Analysis</>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
