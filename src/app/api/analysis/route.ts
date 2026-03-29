@@ -46,7 +46,7 @@ Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -54,7 +54,8 @@ Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 8000,
+            maxOutputTokens: 2000,
+            responseMimeType: "application/json",
           },
         }),
       }
