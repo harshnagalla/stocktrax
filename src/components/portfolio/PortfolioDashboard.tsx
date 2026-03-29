@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { FMPClient } from "@/lib/fmp/client";
 import type { FMPQuote } from "@/lib/fmp/types";
 import { HOLDINGS, UNIQUE_TICKERS, type Holding } from "./holdings";
+import { batchQuoteUrl } from "@/lib/fmp/endpoints";
 import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
 
 interface PortfolioDashboardProps {
@@ -33,13 +34,9 @@ export default function PortfolioDashboard({
     let cancelled = false;
     setLoading(true);
 
-    // Batch fetch all portfolio tickers in one call
-    const url = `https://financialmodelingprep.com/api/v3/quote/${UNIQUE_TICKERS.join(",")}`;
-
-    // We need the API key - fetch through a helper
-    // Since client doesn't expose apiKey, we'll use the env var
+    // Batch fetch all portfolio tickers in one call via stable API
     const apiKey = process.env.NEXT_PUBLIC_FMP_API_KEY ?? "";
-    fetch(`${url}?apikey=${apiKey}`)
+    fetch(batchQuoteUrl(UNIQUE_TICKERS, apiKey))
       .then((res) => res.json())
       .then((data) => {
         if (cancelled || !Array.isArray(data)) return;
