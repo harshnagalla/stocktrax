@@ -10,29 +10,27 @@ function today(): string {
 
 export function marketEndpoints(apiKey: string) {
   return {
-    voo: `${BASE_V3}/quote/VOO?apikey=${apiKey}`,
-    qqq: `${BASE_V3}/quote/QQQ?apikey=${apiKey}`,
-    vtwo: `${BASE_V3}/quote/VTWO?apikey=${apiKey}`,
-    vix: `${BASE_STABLE}/quote?symbol=^VIX&apikey=${apiKey}`,
-    treasury: `${BASE_STABLE}/quote?symbol=^TNX&apikey=${apiKey}`,
+    // Batch quote: VOO, QQQ, VTWO, VIX in ONE call
+    batchQuotes: `${BASE_V3}/quote/VOO,QQQ,VTWO?apikey=${apiKey}`,
+    vix: `${BASE_V3}/quote/%5EVIX?apikey=${apiKey}`,
+    treasury: `${BASE_V3}/quote/%5ETNX?apikey=${apiKey}`,
     sectors: `${BASE_V3}/sectors-performance?apikey=${apiKey}`,
-    gainers: `${BASE_STABLE}/biggest-gainers?apikey=${apiKey}`,
-    losers: `${BASE_STABLE}/biggest-losers?apikey=${apiKey}`,
-    actives: `${BASE_STABLE}/most-actives?apikey=${apiKey}`,
     econCalendar: `${BASE_STABLE}/economic-calendar?apikey=${apiKey}`,
     treasuryRates: `${BASE_STABLE}/treasury-rates?apikey=${apiKey}`,
-    spxHistory: `${BASE_V3}/historical-price-full/^GSPC?timeseries=300&apikey=${apiKey}`,
-    spxSma50: `${BASE_V3}/technical_indicator/daily/^GSPC?period=50&type=sma&apikey=${apiKey}`,
-    spxSma150: `${BASE_V3}/technical_indicator/daily/^GSPC?period=150&type=sma&apikey=${apiKey}`,
-    spxSma200: `${BASE_V3}/technical_indicator/daily/^GSPC?period=200&type=sma&apikey=${apiKey}`,
-    spxRsi: `${BASE_V3}/technical_indicator/daily/^GSPC?period=14&type=rsi&apikey=${apiKey}`,
+    spxHistory: `${BASE_V3}/historical-price-full/%5EGSPC?timeseries=300&apikey=${apiKey}`,
+    spxSma50: `${BASE_V3}/technical_indicator/daily/%5EGSPC?period=50&type=sma&apikey=${apiKey}`,
+    spxSma150: `${BASE_V3}/technical_indicator/daily/%5EGSPC?period=150&type=sma&apikey=${apiKey}`,
+    spxSma200: `${BASE_V3}/technical_indicator/daily/%5EGSPC?period=200&type=sma&apikey=${apiKey}`,
+    spxRsi: `${BASE_V3}/technical_indicator/daily/%5EGSPC?period=14&type=rsi&apikey=${apiKey}`,
   };
 }
 
 // ─── Ticker Endpoints (per stock analysis) ───────────────────────
+// Uses batch where possible to minimize API calls
 
 export function tickerEndpoints(ticker: string, apiKey: string) {
   return {
+    // These 2 calls give us quote + profile (can't batch different endpoint types)
     profile: `${BASE_V3}/profile/${ticker}?apikey=${apiKey}`,
     quote: `${BASE_V3}/quote/${ticker}?apikey=${apiKey}`,
     keyMetrics: `${BASE_V3}/key-metrics-ttm/${ticker}?apikey=${apiKey}`,

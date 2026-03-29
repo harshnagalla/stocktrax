@@ -256,9 +256,6 @@ export interface MarketData {
   vix: FMPQuote | null;
   treasury: FMPQuote | null;
   sectors: FMPSectorPerformance[];
-  gainers: FMPMarketMover[];
-  losers: FMPMarketMover[];
-  actives: FMPMarketMover[];
   econCalendar: FMPEconomicEvent[];
   treasuryRates: FMPTreasuryRate | null;
   spxHistory: FMPHistoricalPrice[];

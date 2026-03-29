@@ -8,7 +8,8 @@ import { useFMPClient } from "@/hooks/useFMPClient";
 import type { TickerData } from "@/lib/fmp/types";
 import MarketDashboard from "@/components/market/MarketDashboard";
 import AnalysisDashboard from "@/components/analysis/AnalysisDashboard";
-import { Loader2 } from "lucide-react";
+import PortfolioDashboard from "@/components/portfolio/PortfolioDashboard";
+import { Loader2, Search } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
@@ -56,7 +57,7 @@ export default function Home() {
   const isLoading = loadingTickers.size > 0;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-white">
       <Header
         apiKey={apiKey}
         onApiKeyChange={setApiKey}
@@ -75,14 +76,20 @@ export default function Home() {
           <MarketDashboard
             client={client}
             onRequestCountUpdate={updateRequestCount}
+            onTickerClick={handleAddTicker}
           />
         )}
 
         {activeTab === "analysis" && (
           <>
             {tickers.length === 0 ? (
-              <div className="rounded-2xl bg-bg-surface p-10 text-center text-sm text-text-secondary">
-                Search for a stock ticker above to start your analysis
+              <div className="rounded-2xl bg-bg-surface p-10 text-center">
+                <Search size={32} className="mx-auto text-text-secondary/50" />
+                <div className="mt-3 text-base font-semibold">Analyze a Stock</div>
+                <div className="mt-1 text-sm text-text-secondary">
+                  Type a ticker above (e.g. AAPL, MSFT) to get a full
+                  Adam Khoo VMI analysis with plain English explanations
+                </div>
               </div>
             ) : loadingTickers.size > 0 && Object.keys(tickerDataMap).length === 0 ? (
               <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-12 text-text-secondary">
@@ -99,12 +106,12 @@ export default function Home() {
           </>
         )}
 
-        {activeTab === "compare" && (
-          <div className="rounded-2xl bg-bg-surface p-10 text-center text-sm text-text-secondary">
-            {tickers.length < 2
-              ? "Add 2+ tickers to compare them side by side"
-              : `Comparing: ${tickers.join(" vs ")} — coming soon`}
-          </div>
+        {activeTab === "portfolio" && (
+          <PortfolioDashboard
+            client={client}
+            onRequestCountUpdate={updateRequestCount}
+            onTickerClick={handleAddTicker}
+          />
         )}
       </main>
     </div>

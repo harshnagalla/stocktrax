@@ -17,17 +17,19 @@ import SpxTrendCard from "./SpxTrendCard";
 import TreasuryCard from "./TreasuryCard";
 import FearGreedGauge from "./FearGreedGauge";
 import SectorGrid from "./SectorGrid";
-import MarketMovers from "./MarketMovers";
+import BlueChipWatchlist from "./BlueChipWatchlist";
 import EconomicCalendar from "./EconomicCalendar";
 
 interface MarketDashboardProps {
   client: FMPClient | null;
   onRequestCountUpdate: () => void;
+  onTickerClick?: (ticker: string) => void;
 }
 
 export default function MarketDashboard({
   client,
   onRequestCountUpdate,
+  onTickerClick,
 }: MarketDashboardProps) {
   const [data, setData] = useState<MarketData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,7 +95,6 @@ export default function MarketDashboard({
 
   return (
     <div className="space-y-3">
-      {/* Sentiment + Indices */}
       {sentiment && (
         <SentimentScore
           score={sentiment.score}
@@ -103,13 +104,8 @@ export default function MarketDashboard({
         />
       )}
 
-      <IndexBar
-        voo={data.voo}
-        qqq={data.qqq}
-        vtwo={data.vtwo}
-      />
+      <IndexBar voo={data.voo} qqq={data.qqq} vtwo={data.vtwo} />
 
-      {/* Gauges row */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <VixGauge vix={data.vix} />
         <SpxTrendCard
@@ -122,15 +118,10 @@ export default function MarketDashboard({
         <FearGreedGauge />
       </div>
 
-      {/* Sectors + Movers + Calendar */}
       <SectorGrid sectors={data.sectors} />
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <MarketMovers
-          gainers={data.gainers}
-          losers={data.losers}
-          actives={data.actives}
-        />
+        <BlueChipWatchlist onTickerClick={onTickerClick} />
         <EconomicCalendar events={data.econCalendar} />
       </div>
     </div>

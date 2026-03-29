@@ -1,8 +1,8 @@
 "use client";
 
-import { BarChart3, LineChart, GitCompareArrows } from "lucide-react";
+import { BarChart3, LineChart, Briefcase } from "lucide-react";
 
-export type Tab = "market" | "analysis" | "compare";
+export type Tab = "market" | "analysis" | "portfolio";
 
 interface TabNavigationProps {
   activeTab: Tab;
@@ -12,7 +12,7 @@ interface TabNavigationProps {
 const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "market", label: "Market", icon: BarChart3 },
   { id: "analysis", label: "Analysis", icon: LineChart },
-  { id: "compare", label: "Compare", icon: GitCompareArrows },
+  { id: "portfolio", label: "Portfolio", icon: Briefcase },
 ];
 
 export default function TabNavigation({

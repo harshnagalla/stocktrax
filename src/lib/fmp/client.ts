@@ -2,7 +2,6 @@ import { marketEndpoints, tickerEndpoints } from "./endpoints";
 import type {
   FMPQuote,
   FMPSectorPerformance,
-  FMPMarketMover,
   FMPEconomicEvent,
   FMPTreasuryRate,
   FMPHistoricalResponse,
@@ -47,21 +46,24 @@ export function createFMPClient(apiKey: string): FMPClient {
     cacheKey: string,
     ttl: number = DEFAULT_TTL
   ): Promise<T | null> {
-    // Check cache
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < ttl) {
       return cached.data as T;
     }
 
-    // Fetch from API
     requestCount++;
     try {
       const res = await fetch(url);
       if (!res.ok) {
-        console.error(`FMP error [${cacheKey}]: ${res.status} ${res.statusText}`);
+        console.error(`FMP [${cacheKey}]: ${res.status} ${res.statusText}`);
         return null;
       }
       const data = await res.json();
+      // FMP returns {"Error Message": "..."} for invalid keys
+      if (data && typeof data === "object" && "Error Message" in data) {
+        console.error(`FMP [${cacheKey}]:`, data["Error Message"]);
+        return null;
+      }
       cache.set(cacheKey, { data, timestamp: Date.now() });
       return data as T;
     } catch (err) {
@@ -70,63 +72,57 @@ export function createFMPClient(apiKey: string): FMPClient {
     }
   }
 
-  // Helper: extract first item from array response, or null
   function first<T>(data: T[] | null): T | null {
     if (!data || data.length === 0) return null;
     return data[0];
   }
 
-  // Helper: extract historical array from response
-  function extractHistorical(
-    data: FMPHistoricalResponse | null
-  ): FMPHistoricalPrice[] {
+  function findQuote(quotes: FMPQuote[] | null, symbol: string): FMPQuote | null {
+    if (!quotes) return null;
+    return quotes.find((q) => q.symbol === symbol) ?? null;
+  }
+
+  function extractHistorical(data: FMPHistoricalResponse | null): FMPHistoricalPrice[] {
     return data?.historical ?? [];
   }
 
   async function fetchMarketData(): Promise<MarketData> {
     const ep = marketEndpoints(apiKey);
 
+    // Batch: VOO, QQQ, VTWO in 1 call. VIX + TNX separate (index symbols).
+    // Total: ~11 calls instead of ~17
     const results = await Promise.allSettled([
-      fetchJSON<FMPQuote[]>(ep.voo, "market:voo"),
-      fetchJSON<FMPQuote[]>(ep.qqq, "market:qqq"),
-      fetchJSON<FMPQuote[]>(ep.vtwo, "market:vtwo"),
-      fetchJSON<FMPQuote[]>(ep.vix, "market:vix"),
-      fetchJSON<FMPQuote[]>(ep.treasury, "market:treasury"),
-      fetchJSON<FMPSectorPerformance[]>(ep.sectors, "market:sectors"),
-      fetchJSON<FMPMarketMover[]>(ep.gainers, "market:gainers"),
-      fetchJSON<FMPMarketMover[]>(ep.losers, "market:losers"),
-      fetchJSON<FMPMarketMover[]>(ep.actives, "market:actives"),
-      fetchJSON<FMPEconomicEvent[]>(ep.econCalendar, "market:econCalendar"),
-      fetchJSON<FMPTreasuryRate[]>(ep.treasuryRates, "market:treasuryRates"),
-      fetchJSON<FMPHistoricalResponse>(ep.spxHistory, "market:spxHistory"),
-      fetchJSON<FMPTechnicalIndicator[]>(ep.spxSma50, "market:spxSma50"),
-      fetchJSON<FMPTechnicalIndicator[]>(ep.spxSma150, "market:spxSma150"),
-      fetchJSON<FMPTechnicalIndicator[]>(ep.spxSma200, "market:spxSma200"),
-      fetchJSON<FMPTechnicalIndicator[]>(ep.spxRsi, "market:spxRsi"),
+      fetchJSON<FMPQuote[]>(ep.batchQuotes, "market:batch"),          // 0
+      fetchJSON<FMPQuote[]>(ep.vix, "market:vix"),                     // 1
+      fetchJSON<FMPQuote[]>(ep.treasury, "market:treasury"),           // 2
+      fetchJSON<FMPSectorPerformance[]>(ep.sectors, "market:sectors"), // 3
+      fetchJSON<FMPEconomicEvent[]>(ep.econCalendar, "market:econ"),   // 4
+      fetchJSON<FMPTreasuryRate[]>(ep.treasuryRates, "market:rates"),  // 5
+      fetchJSON<FMPHistoricalResponse>(ep.spxHistory, "market:spxH"),  // 6
+      fetchJSON<FMPTechnicalIndicator[]>(ep.spxSma50, "market:s50"),   // 7
+      fetchJSON<FMPTechnicalIndicator[]>(ep.spxSma150, "market:s150"), // 8
+      fetchJSON<FMPTechnicalIndicator[]>(ep.spxSma200, "market:s200"), // 9
+      fetchJSON<FMPTechnicalIndicator[]>(ep.spxRsi, "market:rsi"),     // 10
     ]);
 
-    // Extract values from settled promises (null on rejection)
-    const v = results.map((r) =>
-      r.status === "fulfilled" ? r.value : null
-    );
+    const v = results.map((r) => (r.status === "fulfilled" ? r.value : null));
+
+    const batchQuotes = v[0] as FMPQuote[] | null;
 
     return {
-      voo: first(v[0] as FMPQuote[] | null),
-      qqq: first(v[1] as FMPQuote[] | null),
-      vtwo: first(v[2] as FMPQuote[] | null),
-      vix: first(v[3] as FMPQuote[] | null),
-      treasury: first(v[4] as FMPQuote[] | null),
-      sectors: (v[5] as FMPSectorPerformance[] | null) ?? [],
-      gainers: (v[6] as FMPMarketMover[] | null) ?? [],
-      losers: (v[7] as FMPMarketMover[] | null) ?? [],
-      actives: (v[8] as FMPMarketMover[] | null) ?? [],
-      econCalendar: (v[9] as FMPEconomicEvent[] | null) ?? [],
-      treasuryRates: first(v[10] as FMPTreasuryRate[] | null),
-      spxHistory: extractHistorical(v[11] as FMPHistoricalResponse | null),
-      spxSma50: (v[12] as FMPTechnicalIndicator[] | null) ?? [],
-      spxSma150: (v[13] as FMPTechnicalIndicator[] | null) ?? [],
-      spxSma200: (v[14] as FMPTechnicalIndicator[] | null) ?? [],
-      spxRsi: (v[15] as FMPTechnicalIndicator[] | null) ?? [],
+      voo: findQuote(batchQuotes, "VOO"),
+      qqq: findQuote(batchQuotes, "QQQ"),
+      vtwo: findQuote(batchQuotes, "VTWO"),
+      vix: first(v[1] as FMPQuote[] | null),
+      treasury: first(v[2] as FMPQuote[] | null),
+      sectors: (v[3] as FMPSectorPerformance[] | null) ?? [],
+      econCalendar: (v[4] as FMPEconomicEvent[] | null) ?? [],
+      treasuryRates: first(v[5] as FMPTreasuryRate[] | null),
+      spxHistory: extractHistorical(v[6] as FMPHistoricalResponse | null),
+      spxSma50: (v[7] as FMPTechnicalIndicator[] | null) ?? [],
+      spxSma150: (v[8] as FMPTechnicalIndicator[] | null) ?? [],
+      spxSma200: (v[9] as FMPTechnicalIndicator[] | null) ?? [],
+      spxRsi: (v[10] as FMPTechnicalIndicator[] | null) ?? [],
     };
   }
 
@@ -144,7 +140,7 @@ export function createFMPClient(apiKey: string): FMPClient {
       fetchJSON<FMPBalanceSheet[]>(ep.balance, `${ticker}:balance`),
       fetchJSON<FMPDCF[]>(ep.dcf, `${ticker}:dcf`),
       fetchJSON<FMPEstimate[]>(ep.estimates, `${ticker}:estimates`),
-      fetchJSON<FMPRecommendation[]>(ep.recommendations, `${ticker}:recommendations`),
+      fetchJSON<FMPRecommendation[]>(ep.recommendations, `${ticker}:recs`),
       fetchJSON<FMPHistoricalResponse>(ep.history, `${ticker}:history`),
       fetchJSON<FMPTechnicalIndicator[]>(ep.ema20, `${ticker}:ema20`),
       fetchJSON<FMPTechnicalIndicator[]>(ep.sma50, `${ticker}:sma50`),
@@ -154,9 +150,7 @@ export function createFMPClient(apiKey: string): FMPClient {
       fetchJSON<FMPSectorPE[]>(ep.sectorPE, `${ticker}:sectorPE`),
     ]);
 
-    const v = results.map((r) =>
-      r.status === "fulfilled" ? r.value : null
-    );
+    const v = results.map((r) => (r.status === "fulfilled" ? r.value : null));
 
     return {
       ticker,
@@ -183,12 +177,8 @@ export function createFMPClient(apiKey: string): FMPClient {
 
   return {
     getRequestCount: () => requestCount,
-    resetRequestCount: () => {
-      requestCount = 0;
-    },
-    clearCache: () => {
-      cache.clear();
-    },
+    resetRequestCount: () => { requestCount = 0; },
+    clearCache: () => { cache.clear(); },
     fetchMarketData,
     fetchTickerData,
   };
