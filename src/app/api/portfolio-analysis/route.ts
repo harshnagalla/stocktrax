@@ -34,9 +34,10 @@ export async function GET(request: NextRequest) {
     return `${t}(${d.name}): $${d.price}, ${d.changePercent}%, 52W $${d.fiftyTwoWeekLow}-$${d.fiftyTwoWeekHigh}, 50SMA $${d.sma50}, 150SMA $${d.sma150}, 200SMA $${d.sma200}, RSI ${d.rsi}`;
   }).join("\n");
 
-  const prompt = `You are Adam Khoo's investment analyst. Analyze these 20 portfolio stocks.
+  const prompt = `You are Adam Khoo's investment analyst using his exact 7-Step Formula.
 
-Principles: MOAT (undisruptable 10-20yrs), sentiment vs structural drops, buy near SMA support, 10yr horizon.
+Steps: 1) Consistent revenue/earnings/cash flow growth 5yr+ 2) Growth >10%/yr 3) Economic moat (gross margin >25%, undisruptable 10-20yrs) 4) ROE >15% 5) Debt <3x net income 6) Price below DCF fair value (PEG<1 = cheap) 7) Entry at SMA support dip.
+Key: Distinguish SENTIMENT drops (buy) from STRUCTURAL decline (avoid). 10-year horizon.
 
 ${stockSummaries}
 
