@@ -14,7 +14,7 @@ import { Loader2, Search } from "lucide-react";
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
   const [provider, setProvider] = useState<ApiProvider>(
-    process.env.NEXT_PUBLIC_FMP_API_KEY ? "fmp" : "demo"
+    process.env.NEXT_PUBLIC_FMP_API_KEY ? "fmp" : "yahoo-free"
   );
   const [apiKey, setApiKey] = useState(
     process.env.NEXT_PUBLIC_FMP_API_KEY ?? ""
