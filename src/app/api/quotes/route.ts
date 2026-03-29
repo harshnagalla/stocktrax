@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateSymbol } from "@/lib/api-utils";
 
 // Server-side quote + analysis proxy
 // GET /api/quotes?symbols=VOO,QQQ,MSFT&analyze=true
@@ -55,9 +56,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "symbols param required" }, { status: 400 });
   }
 
-  const tickers = symbols.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+  const tickers = symbols.split(",").map((s) => s.trim().toUpperCase()).filter((s) => s && validateSymbol(s));
   if (tickers.length === 0) {
     return NextResponse.json({ error: "no valid symbols" }, { status: 400 });
+  }
+  if (tickers.length > 20) {
+    return NextResponse.json({ error: "max 20 symbols" }, { status: 400 });
   }
 
   const results: Record<string, unknown> = {};

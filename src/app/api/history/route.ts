@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ symbol, prices });
   } catch {
     // Fallback to Twelve Data
-    const tdKey = process.env.NEXT_PUBLIC_TWELVE_DATA_API_KEY;
+    const tdKey = process.env.TWELVE_DATA_API_KEY;
     if (tdKey) {
       try {
         const res = await fetch(

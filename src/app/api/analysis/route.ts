@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateSymbol, checkRateLimit } from "@/lib/api-utils";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -16,9 +17,14 @@ Adam Khoo's key principles:
 Current market (March 2026): S&P down ~9%, Nasdaq down ~12%. PEG at 1.07 (30yr low). Tech selling off due to AI capex fears — sentiment, not structural. Overvalued: WMT, KO, PEP, COST.`;
 
 export async function GET(request: NextRequest) {
-  const symbol = request.nextUrl.searchParams.get("symbol");
-  if (!symbol) {
-    return NextResponse.json({ error: "symbol param required" }, { status: 400 });
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const symbol = request.nextUrl.searchParams.get("symbol")?.toUpperCase();
+  if (!symbol || !validateSymbol(symbol)) {
+    return NextResponse.json({ error: "Invalid symbol" }, { status: 400 });
   }
 
   if (!GEMINI_API_KEY) {
@@ -26,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch technical data
-  const origin = request.nextUrl.origin;
+  const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
   let priceContext = `Analyze ${symbol}.`;
   try {
     const quoteRes = await fetch(`${origin}/api/quotes?symbols=${symbol}&analyze=true`);

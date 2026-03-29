@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api-utils";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -7,7 +8,12 @@ const PORTFOLIO_TICKERS = [
   "NNDM", "CWEB", "ISRG", "ATEC", "NKE", "SHOP", "IBIT", "AMZN", "AMD", "GOOGL",
 ];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   if (!GEMINI_API_KEY) {
     return NextResponse.json({ error: "No Gemini key" }, { status: 500 });
   }
