@@ -1,6 +1,6 @@
-// Unified data service: Yahoo Finance (primary) → Twelve Data (fallback)
-
-import { fetchYahooQuotes, fetchYahooHistory, type YahooQuote, type YahooHistoricalPrice } from "./yahoo/client";
+// Unified data service — calls our own Next.js API routes
+// Server handles Yahoo Finance + Twelve Data fallback
+// No external API calls from the browser — no CORS, no key exposure
 
 export interface StockQuote {
   symbol: string;
@@ -29,26 +29,6 @@ export interface HistoricalPrice {
   volume: number;
 }
 
-function yahooToStockQuote(q: YahooQuote): StockQuote {
-  return {
-    symbol: q.symbol,
-    name: q.name,
-    price: q.price,
-    change: q.change,
-    changePercent: q.changePercent,
-    volume: q.volume,
-    marketCap: q.marketCap,
-    pe: null, // chart endpoint doesn't provide PE
-    forwardPE: null,
-    fiftyTwoWeekLow: q.fiftyTwoWeekLow,
-    fiftyTwoWeekHigh: q.fiftyTwoWeekHigh,
-    fiftyDayMA: q.fiftyDayAverage,
-    twoHundredDayMA: q.twoHundredDayAverage,
-    beta: null,
-    sector: null,
-  };
-}
-
 // Cache
 const quoteCache = new Map<string, { data: Record<string, StockQuote>; ts: number }>();
 const historyCache = new Map<string, { data: HistoricalPrice[]; ts: number }>();
@@ -63,29 +43,56 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Stock
   const cached = quoteCache.get(key);
   if (cached && isFresh(cached.ts)) return cached.data;
 
-  const yahoo = await fetchYahooQuotes(symbols);
-  if (Object.keys(yahoo).length > 0) {
+  try {
+    const res = await fetch(`/api/quotes?symbols=${symbols.join(",")}`);
+    if (!res.ok) return {};
+    const data = await res.json();
+
+    // Map to StockQuote shape
     const result: Record<string, StockQuote> = {};
-    for (const [sym, q] of Object.entries(yahoo)) {
-      result[sym] = yahooToStockQuote(q);
+    for (const [sym, q] of Object.entries(data) as [string, Record<string, unknown>][]) {
+      result[sym] = {
+        symbol: sym,
+        name: (q.name as string) ?? sym,
+        price: (q.price as number) ?? 0,
+        change: (q.change as number) ?? 0,
+        changePercent: (q.changePercent as number) ?? 0,
+        volume: (q.volume as number) ?? 0,
+        marketCap: (q.marketCap as number) ?? 0,
+        pe: null,
+        forwardPE: null,
+        fiftyTwoWeekLow: (q.fiftyTwoWeekLow as number) ?? 0,
+        fiftyTwoWeekHigh: (q.fiftyTwoWeekHigh as number) ?? 0,
+        fiftyDayMA: (q.fiftyDayAverage as number) ?? 0,
+        twoHundredDayMA: (q.twoHundredDayAverage as number) ?? 0,
+        beta: null,
+        sector: null,
+      };
     }
+
     quoteCache.set(key, { data: result, ts: Date.now() });
     return result;
+  } catch {
+    return {};
   }
-
-  console.warn("Yahoo Finance failed for:", symbols);
-  return {};
 }
 
 export async function getHistory(symbol: string): Promise<HistoricalPrice[]> {
   const cached = historyCache.get(symbol);
   if (cached && isFresh(cached.ts)) return cached.data;
 
-  const data = await fetchYahooHistory(symbol, "1y", "1d");
-  if (data.length > 0) {
-    historyCache.set(symbol, { data, ts: Date.now() });
+  try {
+    const res = await fetch(`/api/history?symbol=${symbol}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const prices: HistoricalPrice[] = data.prices ?? [];
+    if (prices.length > 0) {
+      historyCache.set(symbol, { data: prices, ts: Date.now() });
+    }
+    return prices;
+  } catch {
+    return [];
   }
-  return data;
 }
 
 // Calculate SMA from prices (oldest first)
@@ -94,20 +101,6 @@ export function calculateSMA(prices: number[], period: number): number[] {
   for (let i = 0; i <= prices.length - period; i++) {
     const slice = prices.slice(i, i + period);
     result.push(slice.reduce((a, b) => a + b, 0) / period);
-  }
-  return result;
-}
-
-// Calculate EMA from prices (oldest first)
-export function calculateEMA(prices: number[], period: number): number[] {
-  if (prices.length < period) return [];
-  const k = 2 / (period + 1);
-  const result: number[] = [];
-  let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
-  result.push(ema);
-  for (let i = period; i < prices.length; i++) {
-    ema = prices[i] * k + ema * (1 - k);
-    result.push(ema);
   }
   return result;
 }

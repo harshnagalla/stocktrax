@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getQuotes, type StockQuote } from "@/lib/data-service";
-import { HOLDINGS, UNIQUE_TICKERS, type Holding } from "./holdings";
+import { HOLDINGS, type Holding } from "./holdings";
 import { Loader2, TrendingUp, TrendingDown } from "lucide-react";
 
 interface PortfolioDashboardProps {
@@ -17,14 +16,15 @@ interface EnrichedHolding extends Holding {
 }
 
 export default function PortfolioDashboard({ onTickerClick }: PortfolioDashboardProps) {
-  const [quotes, setQuotes] = useState<Record<string, StockQuote>>({});
+  const [quotes, setQuotes] = useState<Record<string, { price: number; change: number; changePercent: number }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
 
-    getQuotes(UNIQUE_TICKERS)
+    fetch("/api/portfolio")
+      .then((res) => res.json())
       .then((data) => { if (!cancelled) setQuotes(data); })
       .catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false); });
