@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import Header from "@/components/Header";
 import TabNavigation, { type Tab } from "@/components/TabNavigation";
 import TickerSearch from "@/components/TickerSearch";
-import { useFMPClient } from "@/hooks/useFMPClient";
+import { useFMPClient, type ApiProvider } from "@/hooks/useFMPClient";
 import type { TickerData } from "@/lib/fmp/types";
 import MarketDashboard from "@/components/market/MarketDashboard";
 import AnalysisDashboard from "@/components/analysis/AnalysisDashboard";
@@ -13,6 +13,9 @@ import { Loader2, Search } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
+  const [provider, setProvider] = useState<ApiProvider>(
+    process.env.NEXT_PUBLIC_FMP_API_KEY ? "fmp" : "demo"
+  );
   const [apiKey, setApiKey] = useState(
     process.env.NEXT_PUBLIC_FMP_API_KEY ?? ""
   );
@@ -20,7 +23,18 @@ export default function Home() {
   const [tickerDataMap, setTickerDataMap] = useState<Record<string, TickerData>>({});
   const [loadingTickers, setLoadingTickers] = useState<Set<string>>(new Set());
 
-  const { client, requestCount, updateRequestCount, isDemo } = useFMPClient(apiKey);
+  const { client, requestCount, updateRequestCount, isDemo } = useFMPClient(apiKey, provider);
+
+  // When provider or API key changes, clear cached ticker data
+  const handleProviderChange = useCallback((p: ApiProvider) => {
+    setProvider(p);
+    setTickerDataMap({});
+  }, []);
+
+  const handleApiKeyChange = useCallback((key: string) => {
+    setApiKey(key);
+    setTickerDataMap({});
+  }, []);
 
   const handleAddTicker = useCallback(
     async (ticker: string) => {
@@ -60,12 +74,14 @@ export default function Home() {
     <div className="flex min-h-screen flex-col bg-white">
       <Header
         apiKey={apiKey}
-        onApiKeyChange={setApiKey}
+        onApiKeyChange={handleApiKeyChange}
         requestCount={requestCount}
+        provider={provider}
+        onProviderChange={handleProviderChange}
       />
       {isDemo && (
         <div className="border-b border-info/20 bg-info/5 px-4 py-1.5 text-center text-xs text-info">
-          Demo mode — using simulated data. Enter an FMP API key for live market data.
+          Demo mode — using simulated data. Select a provider and enter an API key for live data.
         </div>
       )}
       <TickerSearch

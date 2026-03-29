@@ -6,9 +6,10 @@ import { useState } from "react";
 interface ApiKeyInputProps {
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
 }
 
-export default function ApiKeyInput({ value, onChange }: ApiKeyInputProps) {
+export default function ApiKeyInput({ value, onChange, placeholder = "API Key" }: ApiKeyInputProps) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -17,7 +18,7 @@ export default function ApiKeyInput({ value, onChange }: ApiKeyInputProps) {
         type={visible ? "text" : "password"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="API Key"
+        placeholder={placeholder}
         className="w-28 rounded-lg border border-border bg-bg-surface px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary focus:border-info focus:outline-none sm:w-40"
       />
       <button
