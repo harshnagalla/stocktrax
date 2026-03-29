@@ -1,12 +1,12 @@
 "use client";
 
-import type { FMPQuote } from "@/lib/fmp/types";
+import type { StockQuote } from "@/lib/data-service";
 
 interface VixGaugeProps {
-  vix: FMPQuote | null;
+  vix: StockQuote | null;
 }
 
-function getVixZone(level: number): { label: string; color: string; bg: string } {
+function getVixZone(level: number) {
   if (level > 40) return { label: "Extreme Panic", color: "text-bearish", bg: "bg-bearish/10" };
   if (level > 30) return { label: "High Fear", color: "text-bearish", bg: "bg-bearish/5" };
   if (level > 20) return { label: "Elevated", color: "text-neutral", bg: "bg-neutral/10" };
@@ -17,24 +17,14 @@ function getVixZone(level: number): { label: string; color: string; bg: string }
 export default function VixGauge({ vix }: VixGaugeProps) {
   const level = vix?.price ?? 0;
   const zone = getVixZone(level);
-  const changePct = vix?.changesPercentage;
 
   return (
     <div className={`rounded-2xl p-5 ${zone.bg}`}>
       <div className="text-xs font-medium text-text-secondary">VIX</div>
       {vix ? (
         <>
-          <div className={`mt-1 text-2xl font-bold ${zone.color}`}>
-            {level.toFixed(1)}
-          </div>
-          <div className="mt-1 flex items-center gap-2">
-            <span className={`text-xs font-semibold ${zone.color}`}>{zone.label}</span>
-            {changePct != null && (
-              <span className={`text-[11px] ${changePct >= 0 ? "text-bearish" : "text-bullish"}`}>
-                {changePct >= 0 ? "+" : ""}{changePct.toFixed(1)}%
-              </span>
-            )}
-          </div>
+          <div className={`mt-1 text-2xl font-bold ${zone.color}`}>{level.toFixed(1)}</div>
+          <div className={`mt-1 text-xs font-semibold ${zone.color}`}>{zone.label}</div>
         </>
       ) : (
         <div className="mt-1 text-2xl font-bold text-text-secondary">--</div>

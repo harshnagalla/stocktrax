@@ -1,4 +1,7 @@
-import type { FMPSectorPerformance, FMPTechnicalIndicator } from "./fmp/types";
+// Sector performance shape (simplified from FMP)
+interface SectorPerf {
+  changesPercentage: string;
+}
 
 /**
  * Calculate slope as percentage change over lookback period.
@@ -100,7 +103,7 @@ export interface SentimentResult {
 export function calculateSentimentScore(
   vixLevel: number,
   regime: MarketRegime,
-  sectors: FMPSectorPerformance[]
+  sectors: SectorPerf[]
 ): SentimentResult {
   // VIX component (30%)
   let vixScore: number;
@@ -163,15 +166,3 @@ export function calculateSentimentScore(
   return { score, label, color, commentary };
 }
 
-/**
- * Extract SMA/EMA values from FMP technical indicator array.
- * Returns values newest-first.
- */
-export function extractIndicatorValues(
-  indicators: FMPTechnicalIndicator[],
-  field: "sma" | "ema" | "rsi"
-): number[] {
-  return indicators
-    .filter((i) => i[field] != null)
-    .map((i) => i[field] as number);
-}

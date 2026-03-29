@@ -4,36 +4,40 @@ import { useState, useCallback } from "react";
 import Header from "@/components/Header";
 import TabNavigation, { type Tab } from "@/components/TabNavigation";
 import TickerSearch from "@/components/TickerSearch";
-import { useFMPClient } from "@/hooks/useFMPClient";
-import type { TickerData } from "@/lib/fmp/types";
+import { getQuotes, getHistory, type StockQuote, type HistoricalPrice } from "@/lib/data-service";
 import MarketDashboard from "@/components/market/MarketDashboard";
 import AnalysisDashboard from "@/components/analysis/AnalysisDashboard";
 import PortfolioDashboard from "@/components/portfolio/PortfolioDashboard";
 import { Loader2, Search } from "lucide-react";
 
+export interface TickerAnalysis {
+  quote: StockQuote;
+  history: HistoricalPrice[];
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("market");
-  const [apiKey, setApiKey] = useState(
-    process.env.NEXT_PUBLIC_FMP_API_KEY ?? ""
-  );
   const [tickers, setTickers] = useState<string[]>([]);
-  const [tickerDataMap, setTickerDataMap] = useState<Record<string, TickerData>>({});
+  const [tickerDataMap, setTickerDataMap] = useState<Record<string, TickerAnalysis>>({});
   const [loadingTickers, setLoadingTickers] = useState<Set<string>>(new Set());
-
-  const { client, requestCount, updateRequestCount } = useFMPClient(apiKey);
 
   const handleAddTicker = useCallback(
     async (ticker: string) => {
-      if (!client || tickers.includes(ticker) || tickers.length >= 4) return;
+      if (tickers.includes(ticker) || tickers.length >= 4) return;
 
       setTickers((prev) => [...prev, ticker]);
       setLoadingTickers((prev) => new Set(prev).add(ticker));
       setActiveTab("analysis");
 
       try {
-        const data = await client.fetchTickerData(ticker);
-        setTickerDataMap((prev) => ({ ...prev, [ticker]: data }));
-        updateRequestCount();
+        const [quotes, history] = await Promise.all([
+          getQuotes([ticker]),
+          getHistory(ticker),
+        ]);
+        const quote = quotes[ticker];
+        if (quote) {
+          setTickerDataMap((prev) => ({ ...prev, [ticker]: { quote, history } }));
+        }
       } finally {
         setLoadingTickers((prev) => {
           const next = new Set(prev);
@@ -42,7 +46,7 @@ export default function Home() {
         });
       }
     },
-    [client, tickers, updateRequestCount]
+    [tickers]
   );
 
   const handleRemoveTicker = useCallback((ticker: string) => {
@@ -58,11 +62,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <Header
-        apiKey={apiKey}
-        onApiKeyChange={setApiKey}
-        requestCount={requestCount}
-      />
+      <Header />
       <TickerSearch
         tickers={tickers}
         onAddTicker={handleAddTicker}
@@ -73,11 +73,7 @@ export default function Home() {
 
       <main className="mx-auto w-full max-w-lg flex-1 px-4 py-4 sm:max-w-2xl lg:max-w-4xl">
         {activeTab === "market" && (
-          <MarketDashboard
-            client={client}
-            onRequestCountUpdate={updateRequestCount}
-            onTickerClick={handleAddTicker}
-          />
+          <MarketDashboard onTickerClick={handleAddTicker} />
         )}
 
         {activeTab === "analysis" && (
@@ -107,11 +103,7 @@ export default function Home() {
         )}
 
         {activeTab === "portfolio" && (
-          <PortfolioDashboard
-            client={client}
-            onRequestCountUpdate={updateRequestCount}
-            onTickerClick={handleAddTicker}
-          />
+          <PortfolioDashboard onTickerClick={handleAddTicker} />
         )}
       </main>
     </div>

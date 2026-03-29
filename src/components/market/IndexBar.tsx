@@ -1,23 +1,15 @@
 "use client";
 
-import type { FMPQuote } from "@/lib/fmp/types";
+import type { StockQuote } from "@/lib/data-service";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface IndexBarProps {
-  voo: FMPQuote | null;
-  qqq: FMPQuote | null;
-  vtwo: FMPQuote | null;
+  voo: StockQuote | null;
+  qqq: StockQuote | null;
+  vtwo: StockQuote | null;
 }
 
-function IndexCard({
-  ticker,
-  label,
-  quote,
-}: {
-  ticker: string;
-  label: string;
-  quote: FMPQuote | null;
-}) {
+function IndexCard({ ticker, label, quote }: { ticker: string; label: string; quote: StockQuote | null }) {
   if (!quote) {
     return (
       <div className="rounded-2xl bg-bg-surface p-4">
@@ -30,7 +22,7 @@ function IndexCard({
     );
   }
 
-  const positive = (quote.changesPercentage ?? 0) >= 0;
+  const positive = quote.changePercent >= 0;
   const color = positive ? "text-bullish" : "text-bearish";
   const Icon = positive ? TrendingUp : TrendingDown;
 
@@ -41,13 +33,11 @@ function IndexCard({
         <span className="text-xs text-text-secondary">{label}</span>
       </div>
       <div className="mt-2 text-2xl font-bold">
-        ${quote.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? "--"}
+        ${quote.price.toFixed(2)}
       </div>
       <div className={`mt-1 flex items-center gap-1 text-sm font-semibold ${color}`}>
         <Icon size={14} />
-        {quote.changesPercentage != null
-          ? `${quote.changesPercentage >= 0 ? "+" : ""}${quote.changesPercentage.toFixed(2)}%`
-          : "--"}
+        {positive ? "+" : ""}{quote.changePercent.toFixed(2)}%
       </div>
     </div>
   );
