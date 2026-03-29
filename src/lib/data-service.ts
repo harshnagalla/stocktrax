@@ -1,5 +1,4 @@
 // Unified data service: Yahoo Finance (primary) → Twelve Data (fallback)
-// No API key needed for Yahoo. Twelve Data key optional for fallback.
 
 import { fetchYahooQuotes, fetchYahooHistory, type YahooQuote, type YahooHistoricalPrice } from "./yahoo/client";
 
@@ -33,27 +32,27 @@ export interface HistoricalPrice {
 function yahooToStockQuote(q: YahooQuote): StockQuote {
   return {
     symbol: q.symbol,
-    name: q.longName ?? q.shortName ?? q.symbol,
-    price: q.regularMarketPrice,
-    change: q.regularMarketChange,
-    changePercent: q.regularMarketChangePercent,
-    volume: q.regularMarketVolume,
+    name: q.name,
+    price: q.price,
+    change: q.change,
+    changePercent: q.changePercent,
+    volume: q.volume,
     marketCap: q.marketCap,
-    pe: q.trailingPE,
-    forwardPE: q.forwardPE,
+    pe: null, // chart endpoint doesn't provide PE
+    forwardPE: null,
     fiftyTwoWeekLow: q.fiftyTwoWeekLow,
     fiftyTwoWeekHigh: q.fiftyTwoWeekHigh,
     fiftyDayMA: q.fiftyDayAverage,
     twoHundredDayMA: q.twoHundredDayAverage,
-    beta: q.beta ?? null,
-    sector: q.sector ?? null,
+    beta: null,
+    sector: null,
   };
 }
 
 // Cache
 const quoteCache = new Map<string, { data: Record<string, StockQuote>; ts: number }>();
 const historyCache = new Map<string, { data: HistoricalPrice[]; ts: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 min
+const CACHE_TTL = 5 * 60 * 1000;
 
 function isFresh(ts: number): boolean {
   return Date.now() - ts < CACHE_TTL;
@@ -64,7 +63,6 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Stock
   const cached = quoteCache.get(key);
   if (cached && isFresh(cached.ts)) return cached.data;
 
-  // Try Yahoo first
   const yahoo = await fetchYahooQuotes(symbols);
   if (Object.keys(yahoo).length > 0) {
     const result: Record<string, StockQuote> = {};
@@ -75,7 +73,6 @@ export async function getQuotes(symbols: string[]): Promise<Record<string, Stock
     return result;
   }
 
-  // Yahoo failed — return empty (Twelve Data fallback would go here with API key)
   console.warn("Yahoo Finance failed for:", symbols);
   return {};
 }
@@ -91,7 +88,7 @@ export async function getHistory(symbol: string): Promise<HistoricalPrice[]> {
   return data;
 }
 
-// Calculate SMA from historical prices (no API needed)
+// Calculate SMA from prices (oldest first)
 export function calculateSMA(prices: number[], period: number): number[] {
   const result: number[] = [];
   for (let i = 0; i <= prices.length - period; i++) {
@@ -101,12 +98,11 @@ export function calculateSMA(prices: number[], period: number): number[] {
   return result;
 }
 
-// Calculate EMA from historical prices
+// Calculate EMA from prices (oldest first)
 export function calculateEMA(prices: number[], period: number): number[] {
   if (prices.length < period) return [];
   const k = 2 / (period + 1);
   const result: number[] = [];
-  // First EMA = SMA of first `period` values
   let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
   result.push(ema);
   for (let i = period; i < prices.length; i++) {
@@ -116,7 +112,7 @@ export function calculateEMA(prices: number[], period: number): number[] {
   return result;
 }
 
-// Calculate RSI from historical prices
+// Calculate RSI from prices (oldest first)
 export function calculateRSI(prices: number[], period: number = 14): number[] {
   if (prices.length < period + 1) return [];
   const result: number[] = [];

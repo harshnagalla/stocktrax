@@ -1,32 +1,18 @@
-// Yahoo Finance unofficial API — free, no key needed
-// Uses the v8 finance endpoint which returns JSON
-
-const BASE = "https://query1.finance.yahoo.com/v8/finance";
+// Yahoo Finance — uses the chart endpoint (v8) which is still accessible
+// The quote endpoint (v7/v8) is now restricted, but chart works fine
 
 export interface YahooQuote {
   symbol: string;
-  shortName: string | null;
-  longName: string | null;
-  regularMarketPrice: number;
-  regularMarketChange: number;
-  regularMarketChangePercent: number;
-  regularMarketVolume: number;
-  regularMarketDayLow: number;
-  regularMarketDayHigh: number;
-  regularMarketOpen: number;
-  regularMarketPreviousClose: number;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  marketCap: number;
   fiftyTwoWeekLow: number;
   fiftyTwoWeekHigh: number;
-  marketCap: number;
-  trailingPE: number | null;
-  forwardPE: number | null;
-  priceToBook: number | null;
   fiftyDayAverage: number;
   twoHundredDayAverage: number;
-  averageVolume: number;
-  sector?: string;
-  industry?: string;
-  beta?: number;
 }
 
 export interface YahooHistoricalPrice {
@@ -38,48 +24,49 @@ export interface YahooHistoricalPrice {
   volume: number;
 }
 
-// Fetch quotes for multiple symbols in one call
-export async function fetchYahooQuotes(symbols: string[]): Promise<Record<string, YahooQuote>> {
-  const url = `${BASE}/quote?symbols=${symbols.join(",")}`;
+// Fetch quote data via chart endpoint (works without auth)
+export async function fetchYahooQuotes(
+  symbols: string[]
+): Promise<Record<string, YahooQuote>> {
+  const results: Record<string, YahooQuote> = {};
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Yahoo ${res.status}`);
-    const data = await res.json();
-    const results = data?.quoteResponse?.result ?? [];
-    const map: Record<string, YahooQuote> = {};
-    for (const q of results) {
-      map[q.symbol] = {
-        symbol: q.symbol,
-        shortName: q.shortName ?? null,
-        longName: q.longName ?? null,
-        regularMarketPrice: q.regularMarketPrice ?? 0,
-        regularMarketChange: q.regularMarketChange ?? 0,
-        regularMarketChangePercent: q.regularMarketChangePercent ?? 0,
-        regularMarketVolume: q.regularMarketVolume ?? 0,
-        regularMarketDayLow: q.regularMarketDayLow ?? 0,
-        regularMarketDayHigh: q.regularMarketDayHigh ?? 0,
-        regularMarketOpen: q.regularMarketOpen ?? 0,
-        regularMarketPreviousClose: q.regularMarketPreviousClose ?? 0,
-        fiftyTwoWeekLow: q.fiftyTwoWeekLow ?? 0,
-        fiftyTwoWeekHigh: q.fiftyTwoWeekHigh ?? 0,
-        marketCap: q.marketCap ?? 0,
-        trailingPE: q.trailingPE ?? null,
-        forwardPE: q.forwardPE ?? null,
-        priceToBook: q.priceToBook ?? null,
-        fiftyDayAverage: q.fiftyDayAverage ?? 0,
-        twoHundredDayAverage: q.twoHundredDayAverage ?? 0,
-        averageVolume: q.averageDailyVolume3Month ?? 0,
-        sector: q.sector,
-        industry: q.industry,
-        beta: q.beta,
+  // Fetch in parallel (chart endpoint doesn't support batch)
+  const promises = symbols.map(async (symbol) => {
+    try {
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=5d&interval=1d`,
+        { headers: { "User-Agent": "Mozilla/5.0" } }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (!meta) return;
+
+      const prev = meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice;
+      const price = meta.regularMarketPrice ?? 0;
+      const change = price - prev;
+      const changePercent = prev > 0 ? (change / prev) * 100 : 0;
+
+      results[symbol] = {
+        symbol,
+        name: meta.longName ?? meta.shortName ?? symbol,
+        price,
+        change,
+        changePercent,
+        volume: meta.regularMarketVolume ?? 0,
+        marketCap: 0, // chart endpoint doesn't provide market cap
+        fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? 0,
+        fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? 0,
+        fiftyDayAverage: meta.fiftyDayAverage ?? 0,
+        twoHundredDayAverage: meta.twoHundredDayAverage ?? 0,
       };
+    } catch (err) {
+      console.error(`Yahoo chart failed for ${symbol}:`, err);
     }
-    return map;
-  } catch (err) {
-    console.error("Yahoo Finance fetch failed:", err);
-    return {};
-  }
+  });
+
+  await Promise.all(promises);
+  return results;
 }
 
 // Fetch historical prices via chart endpoint
@@ -88,19 +75,20 @@ export async function fetchYahooHistory(
   range: string = "1y",
   interval: string = "1d"
 ): Promise<YahooHistoricalPrice[]> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
-
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Yahoo chart ${res.status}`);
+    const res = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`,
+      { headers: { "User-Agent": "Mozilla/5.0" } }
+    );
+    if (!res.ok) return [];
     const data = await res.json();
     const result = data?.chart?.result?.[0];
     if (!result) return [];
 
-    const timestamps = result.timestamp ?? [];
+    const timestamps: number[] = result.timestamp ?? [];
     const ohlcv = result.indicators?.quote?.[0] ?? {};
 
-    return timestamps.map((ts: number, i: number) => ({
+    return timestamps.map((ts, i) => ({
       date: new Date(ts * 1000).toISOString().split("T")[0],
       open: ohlcv.open?.[i] ?? 0,
       high: ohlcv.high?.[i] ?? 0,
@@ -109,7 +97,7 @@ export async function fetchYahooHistory(
       volume: ohlcv.volume?.[i] ?? 0,
     }));
   } catch (err) {
-    console.error("Yahoo chart fetch failed:", err);
+    console.error("Yahoo chart history failed:", err);
     return [];
   }
 }
