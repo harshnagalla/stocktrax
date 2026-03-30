@@ -8,6 +8,7 @@ import { getQuotes, getHistory, type StockQuote, type HistoricalPrice } from "@/
 import MarketDashboard from "@/components/market/MarketDashboard";
 import AnalysisDashboard from "@/components/analysis/AnalysisDashboard";
 import PortfolioDashboard from "@/components/portfolio/PortfolioDashboard";
+import ScreenerDashboard from "@/components/screener/ScreenerDashboard";
 import { Loader2, Search } from "lucide-react";
 
 export interface TickerAnalysis {
@@ -100,6 +101,10 @@ export default function Home() {
               />
             )}
           </>
+        )}
+
+        {activeTab === "screener" && (
+          <ScreenerDashboard />
         )}
 
         {activeTab === "portfolio" && (
