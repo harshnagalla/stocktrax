@@ -19,7 +19,7 @@ export interface TickerAnalysis {
 }
 
 export default function Home() {
-  const { user, loading: authLoading, signInWithGoogle, signOut } = useAuth();
+  const { user, loading: authLoading, error: authError, signInWithGoogle, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("market");
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerDataMap, setTickerDataMap] = useState<Record<string, TickerAnalysis>>({});
@@ -58,7 +58,7 @@ export default function Home() {
 
   // Not logged in
   if (!user) {
-    return <LoginScreen onSignIn={signInWithGoogle} />;
+    return <LoginScreen onSignIn={signInWithGoogle} error={authError} />;
   }
 
   const isLoading = loadingTickers.size > 0;

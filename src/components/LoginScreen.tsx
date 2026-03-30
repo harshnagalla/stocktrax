@@ -4,9 +4,10 @@ import { Activity } from "lucide-react";
 
 interface LoginScreenProps {
   onSignIn: () => void;
+  error?: string | null;
 }
 
-export default function LoginScreen({ onSignIn }: LoginScreenProps) {
+export default function LoginScreen({ onSignIn, error }: LoginScreenProps) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4">
       <div className="w-full max-w-sm text-center">
@@ -31,6 +32,16 @@ export default function LoginScreen({ onSignIn }: LoginScreenProps) {
           </svg>
           Continue with Google
         </button>
+
+        {error && (
+          <div className="mt-4 rounded-xl bg-bearish/5 p-3 text-xs text-bearish">
+            {error}
+          </div>
+        )}
+
+        <p className="mt-6 text-[10px] text-text-secondary">
+          Tip: If login doesn&apos;t work, open this link in Chrome or Safari — in-app browsers (WhatsApp, Instagram) don&apos;t support Google login.
+        </p>
       </div>
     </div>
   );
