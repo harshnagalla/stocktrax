@@ -40,40 +40,12 @@ export async function GET(request: NextRequest) {
     }
   } catch { /* continue */ }
 
-  const prompt = `You are two analysts debating about ${symbol}, then reaching a final verdict.
+  const prompt = `Bull vs Bear debate on ${symbol}. Use CURRENT data: ${techData || "unknown"}
 
-ANALYST 1 (Bull): Uses Adam Khoo's 7-Step Formula. Looks for: moat, consistent growth, ROE>15%, debt<3x income, PEG<1, price near SMA support. 10-year horizon.
+Return JSON:
+{"action":"BUY","confidence":8,"oneLiner":"short","verdict":"short","strategy":"what to do, how much, when","entryPoint":"349","entryReason":"short","bullPoint":"short","bearPoint":"short","moat":"WIDE","moatWhy":"short","risk":"LOW","topRisk":"short","intrinsicValue":500,"buyAt":349,"stopLoss":320,"technicalScore":70,"fundamentalScore":85}
 
-ANALYST 2 (Bear/Critic): Challenges everything. Finds real risks, questions the moat, looks for structural problems, considers competition and disruption.
-
-MODERATOR: Weighs both sides using technical data and historical patterns. Gives ONE clear verdict.
-
-CURRENT LIVE DATA (use this for your analysis, not your training data):
-${techData || "No data available."}
-
-IMPORTANT: Base your recommendation on the CURRENT price and SMA levels shown above. If price is above 200 SMA but 50 SMA is crossing below 150 SMA, the trend is TRANSITIONING — don't recommend BUY in a transitioning trend. If RSI < 30, note it's oversold but wait for trend confirmation.
-
-Have the debate internally, then return ONE unified verdict. Return JSON:
-{
-  "action": "BUY/HOLD/SELL/AVOID",
-  "confidence": 1-10,
-  "oneLiner": "One sentence: what to do and why (plain English, no jargon)",
-  "verdict": "2-3 sentences: the balanced conclusion after bull vs bear debate",
-  "strategy": "2-3 sentences: EXACTLY what to do. If BUY: how much to buy (% of portfolio), entry price, when to add more. If HOLD: when to sell. If SELL: why and where to redeploy capital.",
-  "entryPoint": "Specific price to enter (based on nearest SMA support or key technical level)",
-  "entryReason": "One sentence why this entry point",
-  "bullPoint": "Strongest bull argument in one sentence",
-  "bearPoint": "Strongest bear argument in one sentence",
-  "moat": "WIDE/NARROW/NONE",
-  "moatWhy": "One sentence why",
-  "risk": "LOW/MEDIUM/HIGH",
-  "topRisk": "Biggest single risk in one sentence",
-  "intrinsicValue": number_or_null,
-  "buyAt": number_or_null,
-  "stopLoss": number_or_null,
-  "technicalScore": 0-100,
-  "fundamentalScore": 0-100
-}`;
+Rules: Use current price/SMAs for recommendation. Transitioning trend=don't say BUY. Be specific with entry/stop prices.`;
 
   try {
     const res = await fetch(
@@ -83,7 +55,7 @@ Have the debate internally, then return ONE unified verdict. Return JSON:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 2000, responseMimeType: "application/json" },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 4000, responseMimeType: "application/json" },
         }),
       }
     );
