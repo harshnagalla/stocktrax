@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, TrendingUp, TrendingDown, Shield, ArrowRight, RefreshCw } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Shield, ArrowRight, RefreshCw, Sparkles } from "lucide-react";
 
 interface ScreenResult {
   symbol: string;
@@ -18,6 +18,10 @@ interface ScreenResult {
   score: number;
   signal: string;
   reason: string;
+  analysis?: string;
+  fundamentalScore?: number;
+  moatScore?: number;
+  targetUpside?: number;
 }
 
 interface ScreenData {
@@ -35,7 +39,29 @@ const SIGNAL_STYLES: Record<string, { bg: string; text: string }> = {
   AVOID: { bg: "bg-bearish/10", text: "text-bearish" },
 };
 
-function ScoreBar({ score }: { score: number }) {
+function MoatDots({ score }: { score: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className={`h-1.5 w-3 rounded-full ${i <= score ? "bg-bullish" : "bg-border"}`} />
+      ))}
+    </div>
+  );
+}
+
+function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-20 text-[10px] text-text-secondary">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(score, 100)}%` }} />
+      </div>
+      <span className="w-5 text-right text-[10px] font-bold">{score}</span>
+    </div>
+  );
+}
+
+function TechScoreBar({ score }: { score: number }) {
   const color = score >= 70 ? "bg-bullish" : score >= 50 ? "bg-info" : score >= 35 ? "bg-neutral" : "bg-bearish";
   return (
     <div className="flex items-center gap-2">
@@ -166,30 +192,32 @@ export default function ScreenerDashboard() {
                 </div>
               </div>
 
-              {/* Score bar */}
-              <div className="mt-2">
-                <ScoreBar score={stock.score} />
+              {/* Score bars */}
+              <div className="mt-3 space-y-1">
+                <ScoreBar label="Technical" score={stock.score} color="bg-info" />
+                {stock.fundamentalScore != null && (
+                  <ScoreBar label="Fundamental" score={stock.fundamentalScore} color="bg-bullish" />
+                )}
               </div>
 
               {/* Key metrics */}
               <div className="mt-2 flex items-center gap-3 text-[10px] text-text-secondary">
+                {stock.targetUpside != null && stock.targetUpside > 0 && (
+                  <span className="font-bold text-bullish">+{stock.targetUpside}% target</span>
+                )}
                 <span>RSI <strong className={`${stock.rsi < 30 ? "text-bearish" : stock.rsi > 70 ? "text-bullish" : "text-text-primary"}`}>{stock.rsi}</strong></span>
-                <span>50 SMA <strong className="text-text-primary">${stock.sma50.toFixed(0)}</strong></span>
-                <span>150 SMA <strong className="text-text-primary">${stock.sma150.toFixed(0)}</strong></span>
-                <ArrowRight size={10} className="ml-auto text-text-secondary" />
+                {stock.moatScore != null && (
+                  <div className="ml-auto flex items-center gap-1">
+                    <Shield size={10} className="text-bullish" />
+                    <MoatDots score={stock.moatScore} />
+                  </div>
+                )}
+                {!stock.moatScore && <ArrowRight size={10} className="ml-auto text-text-secondary" />}
               </div>
 
-              {/* Reason */}
-              <div className="mt-1.5 text-[11px] text-text-secondary">
-                {stock.reason}
-              </div>
-
-              {/* 52W range mini bar */}
-              <div className="mt-2 relative h-1 rounded-full bg-border">
-                <div
-                  className="absolute top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-info"
-                  style={{ left: `${Math.min(Math.max(posInRange, 3), 97)}%` }}
-                />
+              {/* AI Analysis or technical reason */}
+              <div className="mt-1.5 text-[11px] text-text-secondary leading-relaxed">
+                {stock.analysis ? `↗ ${stock.analysis}` : stock.reason}
               </div>
             </Link>
           );
