@@ -2,13 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Sparkles, Info, Shield } from "lucide-react";
+import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Shield, ChevronDown, ChevronUp } from "lucide-react";
 
 interface StockData {
-  symbol: string;
   name: string;
   price: number;
-  change: number;
   changePercent: number;
   fiftyTwoWeekLow: number;
   fiftyTwoWeekHigh: number;
@@ -16,53 +14,34 @@ interface StockData {
   sma150: number;
   sma200: number;
   rsi: number;
-  signal: string;
-  reason: string;
-  buyAt: number | null;
 }
 
-interface AiAnalysis {
+interface Verdict {
   action: string;
-  confidence: string;
-  summary: string;
-  moatType: string;
-  moatReason: string;
-  moatDuration: string;
-  moatScore: number;
-  dropReason: string;
-  dropExplanation: string;
+  confidence: number;
+  oneLiner: string;
+  verdict: string;
+  bullPoint: string;
+  bearPoint: string;
+  moat: string;
+  moatWhy: string;
+  risk: string;
+  topRisk: string;
   intrinsicValue: number | null;
-  buyAtPrice: number | null;
-  shortTermSupport: number | null;
-  longTermSupport: number | null;
+  buyAt: number | null;
+  stopLoss: number | null;
   technicalScore: number;
   fundamentalScore: number;
-  targetUpside: number;
 }
 
-interface CriticData {
-  overallRisk: string;
-  bearCase: string;
-  risks: Array<{ title: string; severity: string; explanation: string }>;
-  moatChallenge: string;
-  valuationRisk: string;
-  technicalWarning: string;
-  worstCase: string;
-  verdict: string;
-}
-
-const RISK_COLORS: Record<string, string> = {
-  HIGH: "text-bearish bg-bearish/10",
-  MEDIUM: "text-neutral bg-neutral/10",
-  LOW: "text-bullish bg-bullish/10",
+const ACTION_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  BUY: { bg: "bg-bullish/10", text: "text-bullish", border: "border-bullish/20" },
+  HOLD: { bg: "bg-info/10", text: "text-info", border: "border-info/20" },
+  SELL: { bg: "bg-bearish/10", text: "text-bearish", border: "border-bearish/20" },
+  AVOID: { bg: "bg-bearish/10", text: "text-bearish", border: "border-bearish/20" },
 };
 
-const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
-  BUY: { bg: "bg-bullish/10", text: "text-bullish" },
-  HOLD: { bg: "bg-info/10", text: "text-info" },
-  SELL: { bg: "bg-bearish/10", text: "text-bearish" },
-  WATCH: { bg: "bg-neutral/10", text: "text-neutral" },
-};
+const RISK_COLORS: Record<string, string> = { HIGH: "text-bearish", MEDIUM: "text-neutral", LOW: "text-bullish" };
 
 function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
@@ -76,61 +55,31 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
   );
 }
 
-function MoatDots({ score }: { score: number }) {
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className={`h-2 w-4 rounded-full ${i <= score ? "bg-bullish" : "bg-border"}`} />
-      ))}
-    </div>
-  );
-}
-
-function InfoCard({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl bg-bg-surface p-4">
-      <div className="text-[10px] font-medium text-text-secondary">{label}</div>
-      <div className="mt-1">{children}</div>
-    </div>
-  );
-}
-
 export default function StockDetailPage() {
   const params = useParams();
   const router = useRouter();
   const symbol = (params.symbol as string)?.toUpperCase();
 
   const [data, setData] = useState<StockData | null>(null);
-  const [ai, setAi] = useState<AiAnalysis | null>(null);
-  const [critic, setCritic] = useState<CriticData | null>(null);
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [loading, setLoading] = useState(true);
-  const [aiLoading, setAiLoading] = useState(true);
-  const [criticLoading, setCriticLoading] = useState(false);
+  const [verdictLoading, setVerdictLoading] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     if (!symbol) return;
+
     fetch(`/api/quotes?symbols=${symbol}&analyze=true`)
       .then((r) => r.json())
       .then((d) => setData(d[symbol] ?? null))
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    fetch(`/api/analysis?symbol=${symbol}`)
+    fetch(`/api/verdict?symbol=${symbol}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        setAi(d);
-        // Auto-fetch critic after analysis loads
-        if (d && !d.error) {
-          setCriticLoading(true);
-          fetch(`/api/critic?symbol=${symbol}&analysis=${encodeURIComponent(JSON.stringify(d))}`)
-            .then((r) => r.ok ? r.json() : null)
-            .then((c) => { if (c && !c.error) setCritic(c); })
-            .catch(() => {})
-            .finally(() => setCriticLoading(false));
-        }
-      })
+      .then((v) => { if (v && !v.error) setVerdict(v); })
       .catch(() => {})
-      .finally(() => setAiLoading(false));
+      .finally(() => setVerdictLoading(false));
   }, [symbol]);
 
   if (loading) {
@@ -151,32 +100,11 @@ export default function StockDetailPage() {
   }
 
   const positive = data.changePercent >= 0;
-  const action = ai?.action ?? data.signal ?? "HOLD";
+  const action = verdict?.action ?? "HOLD";
   const style = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
 
   const range52 = data.fiftyTwoWeekHigh - data.fiftyTwoWeekLow;
   const pricePos = range52 > 0 ? ((data.price - data.fiftyTwoWeekLow) / range52) * 100 : 50;
-
-  const aboveSma50 = data.price > data.sma50;
-  const aboveSma150 = data.price > data.sma150;
-  const aboveSma200 = data.price > data.sma200;
-  const sma50Above150 = data.sma50 > data.sma150;
-
-  let trendLabel: string;
-  let trendExplanation: string;
-  if (aboveSma50 && sma50Above150 && aboveSma200) {
-    trendLabel = "Uptrend ↑";
-    trendExplanation = "All moving averages are lined up bullishly. This is the ideal condition for buying.";
-  } else if (!aboveSma50 && aboveSma150) {
-    trendLabel = "Correction →";
-    trendExplanation = "Price pulled back below 50 SMA but still above 150 SMA. Could be a buying opportunity if it bounces.";
-  } else if (!aboveSma200) {
-    trendLabel = "Downtrend ↓";
-    trendExplanation = "Price below 200 SMA. Wait for it to get back above before buying.";
-  } else {
-    trendLabel = "Transitioning →";
-    trendExplanation = "Trend is unclear. 50 SMA crossing 150 SMA. Wait for clarity.";
-  }
 
   return (
     <div className="min-h-screen bg-white pb-20 sm:pb-8">
@@ -189,7 +117,9 @@ export default function StockDetailPage() {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="text-base font-bold">{symbol}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.bg} ${style.text}`}>{action}</span>
+              {verdict && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.bg} ${style.text}`}>{action}</span>
+              )}
             </div>
             <div className="text-xs text-text-secondary">{data.name}</div>
           </div>
@@ -205,325 +135,156 @@ export default function StockDetailPage() {
 
       <div className="mx-auto max-w-lg space-y-3 px-4 pt-4 sm:max-w-2xl">
 
-        {/* AI Analysis — Main Card */}
-        <div className="rounded-2xl bg-bg-surface p-5">
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-info">
-            <Sparkles size={14} />
-            Smart Analysis
+        {/* Verdict Card — the ONE thing the user needs */}
+        {verdictLoading ? (
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-8 text-text-secondary">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Bull vs Bear debate in progress...</span>
           </div>
-
-          {aiLoading ? (
-            <div className="mt-3 flex items-center gap-2 text-xs text-text-secondary">
-              <Loader2 size={12} className="animate-spin" />
-              Analyzing with Gemini...
-            </div>
-          ) : ai ? (
-            <>
-              <p className="mt-3 text-sm leading-relaxed">{ai.summary}</p>
-
-              {/* Score Bars */}
-              <div className="mt-4 space-y-2">
-                <ScoreBar label="Technical" score={ai.technicalScore} color="bg-info" />
-                <ScoreBar label="Fundamental" score={ai.fundamentalScore} color="bg-bullish" />
-              </div>
-
-              {/* Intrinsic Value + Drop Type */}
-              <div className="mt-4 grid grid-cols-2 gap-2">
-                {ai.intrinsicValue && (
-                  <div className="rounded-xl bg-white p-4">
-                    <div className="text-[10px] text-text-secondary">Intrinsic Value</div>
-                    <div className="mt-1 text-2xl font-bold text-bullish">${ai.intrinsicValue}</div>
-                    <div className="text-xs text-text-secondary">
-                      {data.price < ai.intrinsicValue
-                        ? `${Math.round(((ai.intrinsicValue - data.price) / data.price) * 100)}% upside`
-                        : `${Math.round(((data.price - ai.intrinsicValue) / data.price) * 100)}% overvalued`}
-                    </div>
-                  </div>
-                )}
-                <div className="rounded-xl bg-white p-4">
-                  <div className="text-[10px] text-text-secondary">Drop Type</div>
-                  <div className={`mt-1 text-2xl font-bold ${ai.dropReason === "SENTIMENT" ? "text-bullish" : ai.dropReason === "STRUCTURAL" ? "text-bearish" : "text-text-primary"}`}>
-                    {ai.dropReason}
-                  </div>
-                  <div className="text-xs text-text-secondary">
-                    {ai.dropReason === "SENTIMENT" ? "Buying opportunity" : ai.dropReason === "STRUCTURAL" ? "Be cautious" : "No significant drop"}
-                  </div>
-                </div>
-              </div>
-
-              {/* Economic Moat */}
-              <div className="mt-3 rounded-xl bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <div className="text-[10px] text-text-secondary">Economic Moat</div>
-                  <div className="flex items-center gap-1.5">
-                    <Shield size={12} className="text-bullish" />
-                    <MoatDots score={ai.moatScore} />
-                    <span className="text-[10px] font-bold text-text-secondary ml-1">{ai.moatType}</span>
-                  </div>
-                </div>
-                <p className="mt-2 text-sm leading-relaxed">{ai.moatReason}</p>
-                {ai.moatDuration && (
-                  <p className="mt-1 text-xs text-text-secondary">Expected to last: {ai.moatDuration}</p>
-                )}
-              </div>
-
-              {/* Why did it drop? */}
-              {ai.dropExplanation && (
-                <div className="mt-3 rounded-xl bg-white p-4">
-                  <div className="text-[10px] text-text-secondary">Why did it drop?</div>
-                  <p className="mt-1 text-sm leading-relaxed">{ai.dropExplanation}</p>
-                </div>
-              )}
-
-              {/* Target + Moat Score */}
-              {ai.targetUpside > 0 && (
-                <div className="mt-3 text-sm">
-                  <span className="font-bold text-bullish">+{ai.targetUpside}% target</span>
-                  <span className="text-text-secondary ml-2">to intrinsic value</span>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="mt-3 text-xs text-text-secondary">Analysis unavailable</div>
-          )}
-        </div>
-
-        {/* Critic Agent — Bear Case */}
-        <div className="rounded-2xl bg-bearish/5 p-5">
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-bearish">
-            <Shield size={14} />
-            Devil&apos;s Advocate — Bear Case
-          </div>
-
-          {criticLoading ? (
-            <div className="mt-3 flex items-center gap-2 text-xs text-text-secondary">
-              <Loader2 size={12} className="animate-spin" />
-              Finding flaws...
-            </div>
-          ) : critic ? (
-            <div className="mt-3 space-y-3">
-              {/* Overall risk + verdict */}
-              <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${RISK_COLORS[critic.overallRisk] ?? ""}`}>
-                  {critic.overallRisk} RISK
-                </span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  critic.verdict === "STILL BUY" ? "bg-bullish/10 text-bullish" : critic.verdict === "TOO RISKY" ? "bg-bearish/10 text-bearish" : "bg-neutral/10 text-neutral"
-                }`}>
-                  {critic.verdict}
-                </span>
-              </div>
-
-              {/* Bear case summary */}
-              <p className="text-sm leading-relaxed">{critic.bearCase}</p>
-
-              {/* Risk cards */}
-              <div className="space-y-2">
-                {critic.risks?.map((risk, i) => (
-                  <div key={i} className="rounded-xl bg-white p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold">{risk.title}</span>
-                      <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold ${RISK_COLORS[risk.severity] ?? ""}`}>
-                        {risk.severity}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-text-secondary leading-relaxed">{risk.explanation}</p>
-                  </div>
+        ) : verdict ? (
+          <div className={`rounded-2xl border ${style.border} ${style.bg} p-5`}>
+            {/* Action + Confidence */}
+            <div className="flex items-center gap-2">
+              <span className={`text-2xl font-bold ${style.text}`}>{action}</span>
+              <div className="flex gap-0.5 ml-1">
+                {[...Array(10)].map((_, i) => (
+                  <div key={i} className={`h-2 w-1.5 rounded-full ${i < verdict.confidence ? "bg-text-primary" : "bg-border"}`} />
                 ))}
               </div>
+              <span className="text-[10px] text-text-secondary">{verdict.confidence}/10</span>
+            </div>
 
-              {/* Moat challenge */}
-              <div className="rounded-xl bg-white p-3">
-                <div className="text-[10px] font-medium text-text-secondary">Moat Challenge</div>
-                <p className="mt-1 text-xs leading-relaxed">{critic.moatChallenge}</p>
-              </div>
+            {/* One liner */}
+            <p className="mt-2 text-base font-medium leading-relaxed">{verdict.oneLiner}</p>
 
-              {/* Worst case */}
-              <div className="rounded-xl bg-white p-3">
-                <div className="text-[10px] font-medium text-text-secondary">Worst Case Scenario</div>
-                <p className="mt-1 text-xs leading-relaxed">{critic.worstCase}</p>
-              </div>
+            {/* Verdict */}
+            <p className="mt-2 text-sm text-text-secondary leading-relaxed">{verdict.verdict}</p>
 
-              {/* Technical warning */}
-              {critic.technicalWarning && (
-                <div className="rounded-xl bg-white p-3">
-                  <div className="text-[10px] font-medium text-text-secondary">Technical Warning</div>
-                  <p className="mt-1 text-xs leading-relaxed">{critic.technicalWarning}</p>
+            {/* Score bars */}
+            <div className="mt-4 space-y-2">
+              <ScoreBar label="Technical" score={verdict.technicalScore} color="bg-info" />
+              <ScoreBar label="Fundamental" score={verdict.fundamentalScore} color="bg-bullish" />
+            </div>
+
+            {/* Key numbers row */}
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {verdict.intrinsicValue && (
+                <div className="rounded-xl bg-white/60 p-3 text-center">
+                  <div className="text-[9px] text-text-secondary">Fair Value</div>
+                  <div className="text-lg font-bold text-bullish">${verdict.intrinsicValue}</div>
+                </div>
+              )}
+              {verdict.buyAt && (
+                <div className="rounded-xl bg-white/60 p-3 text-center">
+                  <div className="text-[9px] text-text-secondary">Buy At</div>
+                  <div className="text-lg font-bold text-info">${verdict.buyAt}</div>
+                </div>
+              )}
+              {verdict.stopLoss && (
+                <div className="rounded-xl bg-white/60 p-3 text-center">
+                  <div className="text-[9px] text-text-secondary">Stop Loss</div>
+                  <div className="text-lg font-bold text-bearish">${verdict.stopLoss}</div>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="mt-3 text-xs text-text-secondary">Critic unavailable</div>
-          )}
-        </div>
 
-        {/* Support Levels */}
-        <div className="rounded-2xl bg-bg-surface p-5">
-          <div className="text-xs font-semibold mb-3">Support Levels</div>
-          <div className="grid grid-cols-2 gap-2">
-            <InfoCard label="Short-Term Support (50 SMA)">
-              <div className="text-xl font-bold">${data.sma50.toFixed(0)}</div>
-              <div className="mt-1 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
-                <Info size={10} className="mt-0.5 shrink-0 text-info" />
-                <span>{aboveSma50 ? "Price is above. Short-term trend intact." : "Price broke below. May bounce here or fall further."}</span>
+            {/* Bull vs Bear */}
+            <div className="mt-4 space-y-2">
+              <div className="rounded-xl bg-white/60 p-3">
+                <div className="text-[9px] font-bold text-bullish">BULL</div>
+                <p className="mt-0.5 text-xs leading-relaxed">{verdict.bullPoint}</p>
               </div>
-            </InfoCard>
-            <InfoCard label="Long-Term Support (150 SMA)">
-              <div className="text-xl font-bold">${data.sma150.toFixed(0)}</div>
-              <div className="mt-1 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
-                <Info size={10} className="mt-0.5 shrink-0 text-info" />
-                <span>{aboveSma150 ? "Price above. Medium-term uptrend holds." : "Broken below. Trend is weakening."}</span>
+              <div className="rounded-xl bg-white/60 p-3">
+                <div className="text-[9px] font-bold text-bearish">BEAR</div>
+                <p className="mt-0.5 text-xs leading-relaxed">{verdict.bearPoint}</p>
               </div>
-            </InfoCard>
-          </div>
-          {ai?.shortTermSupport && ai?.longTermSupport && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <InfoCard label="AI Short-Term Support">
-                <div className="text-xl font-bold text-info">${ai.shortTermSupport}</div>
-              </InfoCard>
-              <InfoCard label="AI Long-Term Support">
-                <div className="text-xl font-bold text-info">${ai.longTermSupport}</div>
-              </InfoCard>
             </div>
-          )}
-          <InfoCard label="200 SMA (Last Line of Defense)">
-            <div className="text-xl font-bold">${data.sma200.toFixed(0)}</div>
-            <div className="mt-1 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
-              <Info size={10} className="mt-0.5 shrink-0 text-info" />
-              <span>{aboveSma200 ? "Price above. Long-term trend is intact. Good sign." : "Price below the 200 SMA. This is a red flag — the long-term trend is broken."}</span>
-            </div>
-          </InfoCard>
-        </div>
 
-        {/* Buy Signal */}
-        {(ai?.buyAtPrice ?? data.buyAt) && (
-          <div className="rounded-2xl bg-bullish/5 p-5">
-            <div className="text-sm font-bold text-bullish">
-              {data.price <= (ai?.buyAtPrice ?? data.buyAt ?? 0)
-                ? "🟢 At buy zone — good entry point"
-                : data.price <= (ai?.buyAtPrice ?? data.buyAt ?? 0) * 1.05
-                  ? "🟡 Almost at buy zone — consider starting a small position"
-                  : `⏳ Wait for $${ai?.buyAtPrice ?? data.buyAt} to buy`
-              }
-            </div>
-            <div className="mt-1 text-xs text-text-secondary">
-              Buy target: ${ai?.buyAtPrice ?? data.buyAt} ({((((ai?.buyAtPrice ?? data.buyAt ?? data.price) - data.price) / data.price) * 100).toFixed(1)}% from current)
+            {/* Moat + Risk compact row */}
+            <div className="mt-3 flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-1">
+                <Shield size={12} className="text-bullish" />
+                <span className="font-bold">{verdict.moat}</span>
+                <span className="text-text-secondary">moat</span>
+              </div>
+              <div>
+                <span className={`font-bold ${RISK_COLORS[verdict.risk] ?? ""}`}>{verdict.risk}</span>
+                <span className="text-text-secondary ml-1">risk</span>
+              </div>
             </div>
           </div>
-        )}
+        ) : null}
 
-        {/* 52-Week Range */}
-        <InfoCard label="52-Week Range">
-          <div className="flex justify-between text-xs text-text-secondary mt-1">
-            <span>${data.fiftyTwoWeekLow.toFixed(2)}</span>
-            <span>${data.fiftyTwoWeekHigh.toFixed(2)}</span>
+        {/* 52-Week Range — compact */}
+        <div className="rounded-2xl bg-bg-surface p-4">
+          <div className="flex justify-between text-[10px] text-text-secondary">
+            <span>${data.fiftyTwoWeekLow.toFixed(0)}</span>
+            <span>52W Range</span>
+            <span>${data.fiftyTwoWeekHigh.toFixed(0)}</span>
           </div>
           <div className="relative mt-1.5 h-2 rounded-full bg-border">
             <div
-              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-info ring-2 ring-white"
+              className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-info ring-2 ring-white"
               style={{ left: `${Math.min(Math.max(pricePos, 3), 97)}%` }}
             />
           </div>
-          <div className="mt-2 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
-            <Info size={10} className="mt-0.5 shrink-0 text-info" />
-            <span>
-              {pricePos < 20
-                ? "Near 52-week lows. Could be cheap or could be falling for a reason — check the moat and drop type."
-                : pricePos > 80
-                  ? "Near highs. Less margin of safety. Better to buy on pullbacks."
-                  : "In the middle of its range. Check support levels for entry timing."}
-            </span>
-          </div>
-        </InfoCard>
-
-        {/* Trend + RSI */}
-        <div className="grid grid-cols-2 gap-2">
-          <InfoCard label="Trend">
-            <div className="text-lg font-bold">{trendLabel}</div>
-            <div className="mt-1 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
-              <Info size={10} className="mt-0.5 shrink-0 text-info" />
-              <span>{trendExplanation}</span>
-            </div>
-          </InfoCard>
-          <InfoCard label="RSI (Momentum)">
-            <div className={`text-lg font-bold ${data.rsi < 30 ? "text-bearish" : data.rsi > 70 ? "text-bullish" : ""}`}>
-              {data.rsi}
-            </div>
-            <div className="mt-1 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
-              <Info size={10} className="mt-0.5 shrink-0 text-info" />
-              <span>
-                {data.rsi < 30
-                  ? "Oversold — sellers exhausted, may bounce soon."
-                  : data.rsi > 70
-                    ? "Overbought — may pull back. Not ideal entry."
-                    : "Neutral — no strong momentum signal."}
-              </span>
-            </div>
-          </InfoCard>
         </div>
 
-        {/* Action Plan */}
-        <div className="rounded-2xl bg-info/5 p-5">
-          <div className="text-sm font-semibold text-info mb-3">What should you do?</div>
+        {/* Expandable Details */}
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="flex w-full items-center justify-between rounded-2xl bg-bg-surface px-5 py-3 text-sm font-medium"
+        >
+          Technical Details
+          {showDetails ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
 
+        {showDetails && (
           <div className="space-y-2">
-            {/* Action */}
-            <div className="rounded-xl bg-white p-3">
-              <div className="text-[10px] text-text-secondary">Action</div>
-              <div className={`mt-1 text-lg font-bold ${style.text}`}>{action}</div>
-            </div>
-
-            {/* Checklist */}
-            <div className="rounded-xl bg-white p-3 space-y-2 text-sm">
-              <div className="flex items-start gap-2">
-                <span className={aboveSma200 ? "text-bullish" : "text-bearish"}>{aboveSma200 ? "✅" : "❌"}</span>
-                <span>Above 200 SMA — {aboveSma200 ? "Long-term trend intact" : "Long-term trend broken"}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className={sma50Above150 ? "text-bullish" : "text-bearish"}>{sma50Above150 ? "✅" : "❌"}</span>
-                <span>50 SMA above 150 SMA — {sma50Above150 ? "Uptrend confirmed" : "Trend weakening"}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className={data.rsi < 40 ? "text-bullish" : data.rsi > 70 ? "text-bearish" : "text-text-secondary"}>{data.rsi < 40 ? "✅" : data.rsi > 70 ? "❌" : "➖"}</span>
-                <span>RSI {data.rsi} — {data.rsi < 30 ? "Oversold, potential bounce" : data.rsi < 40 ? "Approaching oversold, good timing" : data.rsi > 70 ? "Overbought, wait for pullback" : "Neutral timing"}</span>
-              </div>
-              {ai && (
-                <div className="flex items-start gap-2">
-                  <span className={ai.dropReason === "SENTIMENT" ? "text-bullish" : ai.dropReason === "STRUCTURAL" ? "text-bearish" : "text-text-secondary"}>
-                    {ai.dropReason === "SENTIMENT" ? "✅" : ai.dropReason === "STRUCTURAL" ? "❌" : "➖"}
-                  </span>
-                  <span>Drop type: {ai.dropReason} — {ai.dropReason === "SENTIMENT" ? "Temporary, buying opportunity" : ai.dropReason === "STRUCTURAL" ? "Fundamental problem, be cautious" : "No significant drop"}</span>
+            {/* Support levels */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-bg-surface p-3 text-center">
+                <div className="text-[9px] text-text-secondary">50 SMA</div>
+                <div className="text-base font-bold">${data.sma50.toFixed(0)}</div>
+                <div className={`text-[9px] font-bold ${data.price > data.sma50 ? "text-bullish" : "text-bearish"}`}>
+                  {data.price > data.sma50 ? "Above ↑" : "Below ↓"}
                 </div>
-              )}
-            </div>
-
-            {/* Recommendation */}
-            <div className="rounded-xl bg-white p-3">
-              <div className="text-[10px] text-text-secondary">Recommendation</div>
-              <p className="mt-1 text-sm leading-relaxed">
-                {action === "BUY"
-                  ? `Buy setup. ${data.buyAt ? `Enter near $${data.buyAt} (50 SMA support).` : "Near support."} Start with a small position (25-50% of planned allocation). Add more if it dips to $${data.sma150.toFixed(0)} (150 SMA).`
-                  : action === "SELL"
-                    ? `Cut losses. Redeploy capital into stocks with better setups. The stock is below its 200 SMA ($${data.sma200.toFixed(0)}) — this means the long-term trend is broken.`
-                    : action === "WATCH"
-                      ? `Don't buy yet. Wait for 50 SMA ($${data.sma50.toFixed(0)}) to cross above 150 SMA ($${data.sma150.toFixed(0)}). Set a price alert at $${data.sma150.toFixed(0)}.`
-                      : `Hold. Uptrend intact. If adding, wait for price to pull back to $${data.sma50.toFixed(0)} (50 SMA) for better entry. Don't chase the price up.`
-                }
-              </p>
-            </div>
-
-            {/* Position sizing */}
-            <div className="rounded-xl bg-white p-3">
-              <div className="text-[10px] text-text-secondary">Position Sizing Rules</div>
-              <div className="mt-1 space-y-1 text-xs text-text-secondary">
-                <div>• Risk 1.5-3% of total capital per stock</div>
-                <div>• Stop loss: 5-8% below purchase price</div>
-                <div>• Max 8-10 stocks in portfolio</div>
-                <div>• Keep 10% in cash always</div>
+              </div>
+              <div className="rounded-2xl bg-bg-surface p-3 text-center">
+                <div className="text-[9px] text-text-secondary">150 SMA</div>
+                <div className="text-base font-bold">${data.sma150.toFixed(0)}</div>
+                <div className={`text-[9px] font-bold ${data.price > data.sma150 ? "text-bullish" : "text-bearish"}`}>
+                  {data.price > data.sma150 ? "Above ↑" : "Below ↓"}
+                </div>
+              </div>
+              <div className="rounded-2xl bg-bg-surface p-3 text-center">
+                <div className="text-[9px] text-text-secondary">RSI</div>
+                <div className={`text-base font-bold ${data.rsi < 30 ? "text-bearish" : data.rsi > 70 ? "text-bullish" : ""}`}>
+                  {data.rsi}
+                </div>
+                <div className="text-[9px] text-text-secondary">
+                  {data.rsi < 30 ? "Oversold" : data.rsi > 70 ? "Overbought" : "Neutral"}
+                </div>
               </div>
             </div>
+
+            {/* Top risk */}
+            {verdict?.topRisk && (
+              <div className="rounded-2xl bg-bearish/5 p-4">
+                <div className="text-[10px] font-bold text-bearish">Top Risk</div>
+                <p className="mt-1 text-xs leading-relaxed">{verdict.topRisk}</p>
+              </div>
+            )}
+
+            {/* Moat explanation */}
+            {verdict?.moatWhy && (
+              <div className="rounded-2xl bg-bg-surface p-4">
+                <div className="text-[10px] font-bold text-text-secondary">Why {verdict.moat} Moat?</div>
+                <p className="mt-1 text-xs leading-relaxed">{verdict.moatWhy}</p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
