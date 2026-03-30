@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { HOLDINGS, type Holding } from "./holdings";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Loader2, TrendingUp, TrendingDown, Shield } from "lucide-react";
+import {
+  Loader2, TrendingUp, TrendingDown, Shield, ArrowRight,
+  Plus, Upload, X, Camera,
+} from "lucide-react";
+
+interface Holding {
+  ticker: string;
+  shares: number;
+  avgCost: number;
+  account: string;
+}
 
 interface QuoteData {
   price: number;
@@ -46,14 +55,11 @@ const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
 function ScoreBar({ label, score, color }: { label: string; score: number; color: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-24 text-[11px] text-text-secondary">{label}</span>
-      <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
-        <div
-          className={`h-full rounded-full ${color}`}
-          style={{ width: `${Math.min(score, 100)}%` }}
-        />
+      <span className="w-20 text-[10px] text-text-secondary">{label}</span>
+      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(score, 100)}%` }} />
       </div>
-      <span className="w-6 text-right text-[11px] font-bold">{score}</span>
+      <span className="w-5 text-right text-[10px] font-bold">{score}</span>
     </div>
   );
 }
@@ -68,25 +74,108 @@ function MoatDots({ score }: { score: number }) {
   );
 }
 
-export default function PortfolioDashboard() {
+export default function PortfolioDashboard({ userId }: { userId: string }) {
+  const [holdings, setHoldings] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
   const [aiData, setAiData] = useState<Record<string, AiData>>({});
   const [loading, setLoading] = useState(true);
-  const [aiLoading, setAiLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [addForm, setAddForm] = useState({ ticker: "", shares: "", avgCost: "", account: "" });
+  const fileRef = useRef<HTMLInputElement>(null);
 
+  // Load user portfolio from Firestore
   useEffect(() => {
-    fetch("/api/portfolio")
+    fetch(`/api/user-portfolio?userId=${userId}`)
       .then((r) => r.json())
-      .then(setQuotes)
+      .then((data) => {
+        if (data.holdings?.length > 0) setHoldings(data.holdings);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, [userId]);
 
+  // Fetch quotes when holdings change
+  useEffect(() => {
+    if (holdings.length === 0) return;
+    const tickers = [...new Set(holdings.map((h) => h.ticker))];
+    fetch(`/api/quotes?symbols=${tickers.join(",")}&analyze=true`)
+      .then((r) => r.json())
+      .then(setQuotes)
+      .catch(() => {});
+  }, [holdings]);
+
+  // Fetch AI analysis when holdings change
+  useEffect(() => {
+    if (holdings.length === 0) return;
+    setAiLoading(true);
     fetch("/api/portfolio-analysis")
       .then((r) => r.ok ? r.json() : {})
-      .then(setAiData)
+      .then((data) => { if (data && !(data as Record<string, unknown>).error) setAiData(data); })
       .catch(() => {})
       .finally(() => setAiLoading(false));
-  }, []);
+  }, [holdings]);
+
+  // Save holdings to Firestore
+  const saveHoldings = useCallback(async (newHoldings: Holding[]) => {
+    setHoldings(newHoldings);
+    await fetch("/api/user-portfolio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, holdings: newHoldings }),
+    });
+  }, [userId]);
+
+  // Add single holding
+  const handleAdd = async () => {
+    const ticker = addForm.ticker.toUpperCase().trim();
+    if (!ticker || !addForm.shares) return;
+    const newHolding: Holding = {
+      ticker,
+      shares: parseFloat(addForm.shares),
+      avgCost: parseFloat(addForm.avgCost) || 0,
+      account: addForm.account || "Default",
+    };
+    await saveHoldings([...holdings, newHolding]);
+    setAddForm({ ticker: "", shares: "", avgCost: "", account: "" });
+    setShowAdd(false);
+  };
+
+  // Remove holding
+  const handleRemove = async (index: number) => {
+    const newHoldings = holdings.filter((_, i) => i !== index);
+    await saveHoldings(newHoldings);
+  };
+
+  // Import from screenshot
+  const handleImport = async (file: File) => {
+    setImporting(true);
+    try {
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/parse-portfolio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.holdings?.length > 0) {
+          await saveHoldings([...holdings, ...data.holdings]);
+        }
+      }
+    } catch {
+      // Import failed
+    } finally {
+      setImporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -97,7 +186,40 @@ export default function PortfolioDashboard() {
     );
   }
 
-  const enriched: EnrichedHolding[] = HOLDINGS.map((h) => {
+  // Empty state
+  if (holdings.length === 0) {
+    return (
+      <div className="space-y-3">
+        <div className="rounded-2xl bg-bg-surface p-8 text-center">
+          <div className="text-base font-semibold">Add Your Portfolio</div>
+          <p className="mt-1 text-sm text-text-secondary">
+            Add stocks manually or import from a screenshot
+          </p>
+          <div className="mt-4 flex justify-center gap-2">
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-1.5 rounded-xl bg-info/10 px-4 py-2.5 text-sm font-medium text-info"
+            >
+              <Plus size={16} /> Add Stock
+            </button>
+            <label className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-bg-surface px-4 py-2.5 text-sm font-medium text-text-secondary border border-border">
+              <Camera size={16} /> Import Screenshot
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
+              />
+            </label>
+          </div>
+        </div>
+        {showAdd && renderAddForm()}
+      </div>
+    );
+  }
+
+  // Enrich holdings
+  const enriched: EnrichedHolding[] = holdings.map((h) => {
     const quote = (quotes[h.ticker] as QuoteData) ?? null;
     const ai = (aiData[h.ticker] as AiData) ?? null;
     const currentPrice = quote?.price ?? null;
@@ -106,9 +228,6 @@ export default function PortfolioDashboard() {
     return { ...h, quote, ai, marketValue, pnl: marketValue - costBasis, pnlPct: costBasis > 0 ? ((marketValue - costBasis) / costBasis) * 100 : 0 };
   });
 
-  const tiger = enriched.filter((h) => h.account === "Tiger");
-  const ibkr = enriched.filter((h) => h.account === "IBKR");
-
   const totalValue = enriched.reduce((s, h) => s + h.marketValue, 0);
   const totalCost = enriched.reduce((s, h) => s + h.avgCost * h.shares, 0);
   const totalPnl = totalValue - totalCost;
@@ -116,97 +235,85 @@ export default function PortfolioDashboard() {
   const totalPositive = totalPnl >= 0;
 
   const actionCounts: Record<string, number> = {};
-  enriched.forEach((h) => {
-    const a = h.ai?.action ?? "HOLD";
-    actionCounts[a] = (actionCounts[a] ?? 0) + 1;
-  });
+  enriched.forEach((h) => { const a = h.ai?.action ?? "HOLD"; actionCounts[a] = (actionCounts[a] ?? 0) + 1; });
 
-  function renderCard(h: EnrichedHolding) {
-    const key = `${h.account}-${h.ticker}`;
+  // Group by account
+  const accounts = [...new Set(holdings.map((h) => h.account))];
+
+  function renderAddForm() {
+    return (
+      <div className="rounded-2xl bg-bg-surface p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">Add Stock</span>
+          <button onClick={() => setShowAdd(false)}><X size={16} className="text-text-secondary" /></button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <input placeholder="Ticker" value={addForm.ticker} onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value.toUpperCase() })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
+          <input placeholder="Shares" type="number" value={addForm.shares} onChange={(e) => setAddForm({ ...addForm, shares: e.target.value })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
+          <input placeholder="Avg Cost" type="number" value={addForm.avgCost} onChange={(e) => setAddForm({ ...addForm, avgCost: e.target.value })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
+          <input placeholder="Account" value={addForm.account} onChange={(e) => setAddForm({ ...addForm, account: e.target.value })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
+        </div>
+        <button onClick={handleAdd} className="w-full rounded-lg bg-info py-2 text-sm font-medium text-white">Add</button>
+      </div>
+    );
+  }
+
+  function renderCard(h: EnrichedHolding, index: number) {
     const positive = h.pnl >= 0;
     const action = h.ai?.action ?? "HOLD";
     const style = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
 
     return (
-      <Link key={key} href={`/stock/${h.ticker}`} className="block rounded-2xl bg-bg-surface p-4 transition-all hover:shadow-md active:scale-[0.98]">
-        {/* Row 1: Ticker + Action badge + Price */}
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">{h.ticker}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.bg} ${style.text}`}>
-                {action}
-              </span>
+      <div key={`${h.account}-${h.ticker}-${index}`} className="rounded-2xl bg-bg-surface p-4 transition-all">
+        <Link href={`/stock/${h.ticker}`} className="block">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">{h.ticker}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${style.bg} ${style.text}`}>{action}</span>
+              </div>
+              <div className="text-[11px] text-text-secondary">{h.quote?.name ?? ""} · {h.shares} shares @ ${h.avgCost.toFixed(2)}</div>
             </div>
-            <div className="text-[11px] text-text-secondary">{h.quote?.name ?? ""}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-bold">${h.quote?.price?.toFixed(2) ?? "--"}</div>
-            <div className={`text-xs font-semibold ${positive ? "text-bullish" : "text-bearish"}`}>
-              {h.quote?.changePercent != null ? `${h.quote.changePercent >= 0 ? "+" : ""}${h.quote.changePercent.toFixed(2)}%` : ""}
-            </div>
-          </div>
-        </div>
-
-        {/* Row 2: Key metrics */}
-        <div className="mt-2 flex items-center gap-3 text-[11px]">
-          <span className="text-text-secondary">
-            P&L <strong className={positive ? "text-bullish" : "text-bearish"}>
-              {positive ? "+" : ""}{h.pnlPct.toFixed(1)}%
-            </strong>
-          </span>
-          <span className="text-text-secondary">
-            {h.shares} shares @ ${h.avgCost.toFixed(2)}
-          </span>
-        </div>
-
-        {h.ai ? (
-          <>
-            {/* Row 3: Score bars */}
-            <div className="mt-3 space-y-1.5">
-              <ScoreBar label="Technical" score={h.ai.technicalScore} color="bg-info" />
-              <ScoreBar label="Fundamental" score={h.ai.fundamentalScore} color="bg-bullish" />
-            </div>
-
-            {/* Row 4: Target + RSI + Moat */}
-            <div className="mt-3 flex items-center gap-3 text-[11px]">
-              {h.ai.targetUpside > 0 && (
-                <span className="font-bold text-bullish">+{h.ai.targetUpside}% target</span>
-              )}
-              {h.quote?.rsi && (
-                <span className="text-text-secondary">RSI {h.quote.rsi}</span>
-              )}
-              <div className="ml-auto flex items-center gap-1">
-                <Shield size={10} className="text-bullish" />
-                <MoatDots score={h.ai.moatScore} />
+            <div className="text-right">
+              <div className="text-lg font-bold">${h.quote?.price?.toFixed(2) ?? "--"}</div>
+              <div className={`text-xs font-semibold ${positive ? "text-bullish" : "text-bearish"}`}>
+                {positive ? "+" : ""}{h.pnlPct.toFixed(1)}% <span className="text-[10px]">${h.pnl.toFixed(0)}</span>
               </div>
             </div>
-
-            {/* Row 5: Buy signal */}
-            {h.ai.buyAtPrice && h.quote && (
-              <div className="mt-2 rounded-lg bg-bullish/5 px-3 py-1.5 text-[11px]">
-                <span className="font-bold text-bullish">
-                  {h.quote.price <= h.ai.buyAtPrice
-                    ? "🟢 Buy now — at support level"
-                    : h.quote.price <= h.ai.buyAtPrice * 1.05
-                      ? "🟡 Almost at buy zone — start small position"
-                      : `Wait for $${h.ai.buyAtPrice} to buy`
-                  }
-                </span>
-              </div>
-            )}
-
-            {/* Row 6: Analysis one-liner */}
-            <div className="mt-2 text-[11px] leading-relaxed text-text-secondary">
-              ↗ {h.ai.analysis}
-            </div>
-          </>
-        ) : aiLoading ? (
-          <div className="mt-3 flex items-center gap-1 text-[10px] text-text-secondary">
-            <Loader2 size={10} className="animate-spin" /> Analyzing with AI...
           </div>
-        ) : null}
-      </Link>
+
+          {h.ai && (
+            <>
+              <div className="mt-3 space-y-1">
+                <ScoreBar label="Technical" score={h.ai.technicalScore} color="bg-info" />
+                <ScoreBar label="Fundamental" score={h.ai.fundamentalScore} color="bg-bullish" />
+              </div>
+              <div className="mt-2 flex items-center gap-3 text-[10px]">
+                {h.ai.targetUpside > 0 && <span className="font-bold text-bullish">+{h.ai.targetUpside}% target</span>}
+                {h.quote?.rsi && <span className="text-text-secondary">RSI {h.quote.rsi}</span>}
+                <div className="ml-auto flex items-center gap-1">
+                  <Shield size={10} className="text-bullish" />
+                  <MoatDots score={h.ai.moatScore} />
+                </div>
+              </div>
+              {h.ai.buyAtPrice && h.quote && (
+                <div className="mt-2 rounded-lg bg-bullish/5 px-3 py-1.5 text-[11px]">
+                  <span className="font-bold text-bullish">
+                    {h.quote.price <= h.ai.buyAtPrice ? "🟢 At buy zone" : h.quote.price <= h.ai.buyAtPrice * 1.05 ? "🟡 Near buy zone" : `Wait for $${h.ai.buyAtPrice}`}
+                  </span>
+                </div>
+              )}
+              <div className="mt-2 text-[11px] text-text-secondary">↗ {h.ai.analysis}</div>
+            </>
+          )}
+          {!h.ai && aiLoading && (
+            <div className="mt-2 flex items-center gap-1 text-[10px] text-text-secondary"><Loader2 size={10} className="animate-spin" /> Analyzing...</div>
+          )}
+
+          <div className="mt-2 flex items-center justify-end text-[9px] text-info">Details <ArrowRight size={8} className="ml-0.5" /></div>
+        </Link>
+        <button onClick={() => handleRemove(index)} className="mt-1 text-[10px] text-text-secondary hover:text-bearish">Remove</button>
+      </div>
     );
   }
 
@@ -215,31 +322,43 @@ export default function PortfolioDashboard() {
       {/* Summary */}
       <div className="rounded-2xl bg-bg-surface p-5">
         <div className="text-xs font-medium text-text-secondary">Total Portfolio</div>
-        <div className="mt-1 text-3xl font-bold">
-          ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </div>
+        <div className="mt-1 text-3xl font-bold">${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
         <div className={`mt-1 flex items-center gap-1 text-sm font-semibold ${totalPositive ? "text-bullish" : "text-bearish"}`}>
           {totalPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           {totalPositive ? "+" : ""}${totalPnl.toFixed(2)} ({totalPositive ? "+" : ""}{totalPnlPct.toFixed(2)}%)
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-bold">
-          {Object.entries(actionCounts).map(([action, count]) => {
-            const s = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
-            return <span key={action} className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>{count} {action}</span>;
+          {Object.entries(actionCounts).map(([a, c]) => {
+            const s = ACTION_STYLES[a] ?? ACTION_STYLES.HOLD;
+            return <span key={a} className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>{c} {a}</span>;
           })}
-          {aiLoading && (
-            <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary">
-              <Loader2 size={10} className="animate-spin" /> Analyzing...
-            </span>
-          )}
+          {aiLoading && <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary"><Loader2 size={10} className="animate-spin" /> Analyzing...</span>}
         </div>
       </div>
 
-      {[{ name: "Tiger Brokers", holdings: tiger }, { name: "IBKR", holdings: ibkr }].map((account) => (
-        <div key={account.name}>
-          <div className="mb-2 px-1 text-sm font-semibold">{account.name}</div>
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-1 rounded-xl bg-info/10 px-3 py-2 text-xs font-medium text-info">
+          <Plus size={14} /> Add Stock
+        </button>
+        <label className="flex cursor-pointer items-center gap-1 rounded-xl bg-bg-surface px-3 py-2 text-xs font-medium text-text-secondary border border-border">
+          {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+          {importing ? "Importing..." : "Import Screenshot"}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
+        </label>
+      </div>
+
+      {showAdd && renderAddForm()}
+
+      {/* Holdings by account */}
+      {accounts.map((account) => (
+        <div key={account}>
+          <div className="mb-2 px-1 text-sm font-semibold">{account}</div>
           <div className="space-y-2">
-            {account.holdings.map(renderCard)}
+            {enriched.filter((h) => h.account === account).map((h) => {
+              const idx = holdings.findIndex((hh) => hh.ticker === h.ticker && hh.account === h.account);
+              return renderCard(h, idx);
+            })}
           </div>
         </div>
       ))}
