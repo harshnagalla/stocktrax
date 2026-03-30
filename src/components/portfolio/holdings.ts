@@ -19,6 +19,7 @@ export const HOLDINGS: Holding[] = [
   { ticker: "VOO", shares: 7, avgCost: 586.77, account: "Tiger" },
   { ticker: "VTWO", shares: 10, avgCost: 89.63, account: "Tiger" },
   { ticker: "XLV", shares: 60, avgCost: 155.16, account: "Tiger" },
+  { ticker: "M44U.SI", shares: 3000, avgCost: 1.099, account: "Tiger" },
   // IBKR
   { ticker: "NNDM", shares: 120, avgCost: 7.50, account: "IBKR" },
   { ticker: "CWEB", shares: 100, avgCost: 70.95, account: "IBKR" },

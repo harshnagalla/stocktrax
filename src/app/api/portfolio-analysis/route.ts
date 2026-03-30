@@ -6,6 +6,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const PORTFOLIO_TICKERS = [
   "ALM", "DOCU", "LULU", "MSFT", "QQQ", "SNAP", "UNH", "VOO", "VTWO", "XLV",
+  "M44U.SI",
   "NNDM", "CWEB", "ISRG", "ATEC", "NKE", "SHOP", "IBIT", "AMZN", "AMD", "GOOGL",
 ];
 
