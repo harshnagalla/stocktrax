@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Loader2, TrendingUp, TrendingDown, Shield, ArrowRight,
-  Plus, Upload, X, Camera,
+  Plus, Upload, X, Camera, ArrowRightLeft,
 } from "lucide-react";
+import ETFRebalancer from "./ETFRebalancer";
 
 interface Holding {
   ticker: string;
@@ -81,6 +82,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showRebalancer, setShowRebalancer] = useState(false);
   const [importing, setImporting] = useState(false);
   const [addForm, setAddForm] = useState({ ticker: "", shares: "", avgCost: "", account: "" });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -346,7 +348,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-1 rounded-xl bg-info/10 px-3 py-2 text-xs font-medium text-info">
           <Plus size={14} /> Add Stock
         </button>
@@ -355,9 +357,17 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
           {importing ? "Importing..." : "Import Screenshot"}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
         </label>
+        <button
+          onClick={() => setShowRebalancer(!showRebalancer)}
+          className={`flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium transition-colors ${showRebalancer ? "bg-info/15 text-info" : "bg-bg-surface text-text-secondary border border-border"}`}
+        >
+          <ArrowRightLeft size={14} /> Rebalance
+        </button>
       </div>
 
       {showAdd && renderAddForm()}
+
+      {showRebalancer && <ETFRebalancer quotes={quotes as Record<string, { price: number; name?: string }>} />}
 
       {/* Holdings by account */}
       {accounts.map((account) => (
