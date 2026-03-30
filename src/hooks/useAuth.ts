@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { onAuthStateChanged, signInWithPopup, signOut as fbSignOut, type User } from "firebase/auth";
+import { onAuthStateChanged, signInWithPopup, signInWithEmailAndPassword, signOut as fbSignOut, type User } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase-client";
 
 export function useAuth() {
@@ -24,9 +24,18 @@ export function useAuth() {
     }
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (err) {
+      console.error("Email sign in failed:", err);
+      throw err;
+    }
+  };
+
   const signOut = async () => {
     await fbSignOut(auth);
   };
 
-  return { user, loading, signInWithGoogle, signOut };
+  return { user, loading, signInWithGoogle, signInWithEmail, signOut };
 }

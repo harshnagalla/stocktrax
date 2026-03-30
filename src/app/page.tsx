@@ -102,7 +102,7 @@ export default function Home() {
           </>
         )}
 
-        {activeTab === "portfolio" && <PortfolioDashboard userId={user.uid} />}
+        {activeTab === "portfolio" && <PortfolioDashboard userId={user.uid} email={user.email ?? undefined} />}
       </main>
     </div>
   );

@@ -74,7 +74,7 @@ function MoatDots({ score }: { score: number }) {
   );
 }
 
-export default function PortfolioDashboard({ userId }: { userId: string }) {
+export default function PortfolioDashboard({ userId, email }: { userId: string; email?: string }) {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteData>>({});
   const [aiData, setAiData] = useState<Record<string, AiData>>({});
@@ -85,16 +85,25 @@ export default function PortfolioDashboard({ userId }: { userId: string }) {
   const [addForm, setAddForm] = useState({ ticker: "", shares: "", avgCost: "", account: "" });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Load user portfolio from Firestore
+  // Load user portfolio from Firestore (auto-seed for harshnagalla@gmail.com)
   useEffect(() => {
-    fetch(`/api/user-portfolio?userId=${userId}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.holdings?.length > 0) setHoldings(data.holdings);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [userId]);
+    async function load() {
+      // Try seed first (only works for harshnagalla@gmail.com, only if empty)
+      if (email) {
+        await fetch("/api/seed-portfolio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, email }),
+        }).catch(() => {});
+      }
+
+      const res = await fetch(`/api/user-portfolio?userId=${userId}`);
+      const data = await res.json();
+      if (data.holdings?.length > 0) setHoldings(data.holdings);
+      setLoading(false);
+    }
+    load();
+  }, [userId, email]);
 
   // Fetch quotes when holdings change
   useEffect(() => {
