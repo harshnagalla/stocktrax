@@ -40,6 +40,23 @@ interface AiAnalysis {
   targetUpside: number;
 }
 
+interface CriticData {
+  overallRisk: string;
+  bearCase: string;
+  risks: Array<{ title: string; severity: string; explanation: string }>;
+  moatChallenge: string;
+  valuationRisk: string;
+  technicalWarning: string;
+  worstCase: string;
+  verdict: string;
+}
+
+const RISK_COLORS: Record<string, string> = {
+  HIGH: "text-bearish bg-bearish/10",
+  MEDIUM: "text-neutral bg-neutral/10",
+  LOW: "text-bullish bg-bullish/10",
+};
+
 const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
   BUY: { bg: "bg-bullish/10", text: "text-bullish" },
   HOLD: { bg: "bg-info/10", text: "text-info" },
@@ -85,8 +102,10 @@ export default function StockDetailPage() {
 
   const [data, setData] = useState<StockData | null>(null);
   const [ai, setAi] = useState<AiAnalysis | null>(null);
+  const [critic, setCritic] = useState<CriticData | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(true);
+  const [criticLoading, setCriticLoading] = useState(false);
 
   useEffect(() => {
     if (!symbol) return;
@@ -98,7 +117,18 @@ export default function StockDetailPage() {
 
     fetch(`/api/analysis?symbol=${symbol}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => setAi(d))
+      .then((d) => {
+        setAi(d);
+        // Auto-fetch critic after analysis loads
+        if (d && !d.error) {
+          setCriticLoading(true);
+          fetch(`/api/critic?symbol=${symbol}&analysis=${encodeURIComponent(JSON.stringify(d))}`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((c) => { if (c && !c.error) setCritic(c); })
+            .catch(() => {})
+            .finally(() => setCriticLoading(false));
+        }
+      })
       .catch(() => {})
       .finally(() => setAiLoading(false));
   }, [symbol]);
@@ -255,6 +285,75 @@ export default function StockDetailPage() {
             </>
           ) : (
             <div className="mt-3 text-xs text-text-secondary">Analysis unavailable</div>
+          )}
+        </div>
+
+        {/* Critic Agent — Bear Case */}
+        <div className="rounded-2xl bg-bearish/5 p-5">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-bearish">
+            <Shield size={14} />
+            Devil&apos;s Advocate — Bear Case
+          </div>
+
+          {criticLoading ? (
+            <div className="mt-3 flex items-center gap-2 text-xs text-text-secondary">
+              <Loader2 size={12} className="animate-spin" />
+              Finding flaws...
+            </div>
+          ) : critic ? (
+            <div className="mt-3 space-y-3">
+              {/* Overall risk + verdict */}
+              <div className="flex items-center gap-2">
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${RISK_COLORS[critic.overallRisk] ?? ""}`}>
+                  {critic.overallRisk} RISK
+                </span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                  critic.verdict === "STILL BUY" ? "bg-bullish/10 text-bullish" : critic.verdict === "TOO RISKY" ? "bg-bearish/10 text-bearish" : "bg-neutral/10 text-neutral"
+                }`}>
+                  {critic.verdict}
+                </span>
+              </div>
+
+              {/* Bear case summary */}
+              <p className="text-sm leading-relaxed">{critic.bearCase}</p>
+
+              {/* Risk cards */}
+              <div className="space-y-2">
+                {critic.risks?.map((risk, i) => (
+                  <div key={i} className="rounded-xl bg-white p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold">{risk.title}</span>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-bold ${RISK_COLORS[risk.severity] ?? ""}`}>
+                        {risk.severity}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-text-secondary leading-relaxed">{risk.explanation}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Moat challenge */}
+              <div className="rounded-xl bg-white p-3">
+                <div className="text-[10px] font-medium text-text-secondary">Moat Challenge</div>
+                <p className="mt-1 text-xs leading-relaxed">{critic.moatChallenge}</p>
+              </div>
+
+              {/* Worst case */}
+              <div className="rounded-xl bg-white p-3">
+                <div className="text-[10px] font-medium text-text-secondary">Worst Case Scenario</div>
+                <p className="mt-1 text-xs leading-relaxed">{critic.worstCase}</p>
+              </div>
+
+              {/* Technical warning */}
+              {critic.technicalWarning && (
+                <div className="rounded-xl bg-white p-3">
+                  <div className="text-[10px] font-medium text-text-secondary">Technical Warning</div>
+                  <p className="mt-1 text-xs leading-relaxed">{critic.technicalWarning}</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 text-xs text-text-secondary">Critic unavailable</div>
           )}
         </div>
 
