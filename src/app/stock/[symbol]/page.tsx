@@ -21,6 +21,9 @@ interface Verdict {
   confidence: number;
   oneLiner: string;
   verdict: string;
+  strategy: string;
+  entryPoint: string;
+  entryReason: string;
   bullPoint: string;
   bearPoint: string;
   moat: string;
@@ -188,15 +191,38 @@ export default function StockDetailPage() {
               )}
             </div>
 
+            {/* Strategy — What to do */}
+            {verdict.strategy && (
+              <div className="mt-4 rounded-xl bg-white/60 p-4">
+                <div className="text-[9px] font-bold text-info">STRATEGY</div>
+                <p className="mt-1 text-sm leading-relaxed">{verdict.strategy}</p>
+              </div>
+            )}
+
+            {/* Entry point */}
+            {verdict.entryPoint && (
+              <div className="mt-2 rounded-xl bg-bullish/10 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[9px] font-bold text-bullish">ENTRY POINT</div>
+                    <div className="text-lg font-bold text-bullish">${verdict.entryPoint}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-text-secondary leading-relaxed max-w-[200px]">{verdict.entryReason}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Bull vs Bear */}
-            <div className="mt-4 space-y-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-white/60 p-3">
                 <div className="text-[9px] font-bold text-bullish">BULL</div>
-                <p className="mt-0.5 text-xs leading-relaxed">{verdict.bullPoint}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed">{verdict.bullPoint}</p>
               </div>
               <div className="rounded-xl bg-white/60 p-3">
                 <div className="text-[9px] font-bold text-bearish">BEAR</div>
-                <p className="mt-0.5 text-xs leading-relaxed">{verdict.bearPoint}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed">{verdict.bearPoint}</p>
               </div>
             </div>
 
