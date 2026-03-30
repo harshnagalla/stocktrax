@@ -65,13 +65,13 @@ export async function GET(request: NextRequest) {
   }
 
   const results: Record<string, unknown> = {};
-  const range = analyze ? "1y" : "5d";
 
   await Promise.all(
     tickers.map(async (symbol) => {
       try {
+        // Always fetch 1y for SMA calculations; derive daily change from last 2 data points
         const res = await fetch(
-          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=1d`,
+          `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1y&interval=1d`,
           {
             headers: { "User-Agent": "Mozilla/5.0" },
             next: { revalidate: 300 },
@@ -83,10 +83,13 @@ export async function GET(request: NextRequest) {
         if (!result) return;
 
         const meta = result.meta;
-        const prev = meta.chartPreviousClose ?? meta.previousClose ?? meta.regularMarketPrice;
         const price = meta.regularMarketPrice ?? 0;
-        const change = price - prev;
-        const changePercent = prev > 0 ? (change / prev) * 100 : 0;
+
+        // Calculate daily change from the last 2 closing prices (NOT chartPreviousClose which is range-start)
+        const closes: number[] = (result.indicators?.quote?.[0]?.close ?? []).filter((c: number | null) => c != null);
+        const prevClose = closes.length >= 2 ? closes[closes.length - 2] : price;
+        const change = price - prevClose;
+        const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
         const entry: Record<string, unknown> = {
           symbol,

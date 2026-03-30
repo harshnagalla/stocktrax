@@ -52,9 +52,10 @@ export async function GET() {
         const closes: number[] = (ohlcv.close ?? []).filter((c: number | null) => c != null);
 
         const price = meta.regularMarketPrice ?? 0;
-        const prev = meta.chartPreviousClose ?? meta.previousClose ?? price;
-        const change = price - prev;
-        const changePercent = prev > 0 ? (change / prev) * 100 : 0;
+        // Daily change from last 2 closes (not chartPreviousClose which is range-start)
+        const prevClose = closes.length >= 2 ? closes[closes.length - 2] : price;
+        const change = price - prevClose;
+        const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
         const sma50 = calcSMA(closes, 50);
         const sma150 = calcSMA(closes, 150);

@@ -21,9 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "No Gemini key" }, { status: 500 });
   }
 
+  const refresh = request.nextUrl.searchParams.get("refresh") === "true";
   const cacheKey = `verdict:${symbol}:${todayKey()}`;
-  const cached = await getCached(cacheKey);
-  if (cached) return NextResponse.json(cached);
+  if (!refresh) {
+    const cached = await getCached(cacheKey);
+    if (cached) return NextResponse.json(cached);
+  }
 
   // Fetch technical data
   const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
@@ -45,7 +48,10 @@ ANALYST 2 (Bear/Critic): Challenges everything. Finds real risks, questions the 
 
 MODERATOR: Weighs both sides using technical data and historical patterns. Gives ONE clear verdict.
 
-Technical data: ${techData || "No data available — analyze based on your knowledge."}
+CURRENT LIVE DATA (use this for your analysis, not your training data):
+${techData || "No data available."}
+
+IMPORTANT: Base your recommendation on the CURRENT price and SMA levels shown above. If price is above 200 SMA but 50 SMA is crossing below 150 SMA, the trend is TRANSITIONING — don't recommend BUY in a transitioning trend. If RSI < 30, note it's oversold but wait for trend confirmation.
 
 Have the debate internally, then return ONE unified verdict. Return JSON:
 {
