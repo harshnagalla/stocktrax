@@ -73,9 +73,6 @@ Return ONLY valid JSON for all 20 tickers.`;
             maxOutputTokens: 16384,
             responseMimeType: "application/json",
           },
-          thinkingConfig: {
-            thinkingBudget: 2048,
-          },
         }),
       }
     );

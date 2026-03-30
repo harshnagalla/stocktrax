@@ -73,10 +73,6 @@ Analyze ${symbol}. Be BRIEF. Return JSON:
             maxOutputTokens: 8192,
             responseMimeType: "application/json",
           },
-          // Limit thinking to leave room for output
-          thinkingConfig: {
-            thinkingBudget: 2048,
-          },
         }),
       }
     );
