@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
 
 ${priceContext}
 
-Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
-{"action":"BUY/HOLD/SELL/WATCH","confidence":"HIGH/MEDIUM/LOW","moat":"1-2 sentences on competitive advantage","dropReason":"SENTIMENT/STRUCTURAL/NONE","dropExplanation":"1-2 sentences why price dropped","intrinsicValue":number_or_null,"buyAtPrice":number_or_null,"summary":"2-3 sentences plain English what to do and why"}`;
+Analyze ${symbol}. Be BRIEF. Return JSON:
+{"action":"BUY","confidence":"HIGH","moat":"short","dropReason":"SENTIMENT","dropExplanation":"short","intrinsicValue":500,"buyAtPrice":350,"summary":"short"}`;
 
   try {
     const res = await fetch(
@@ -70,8 +70,12 @@ Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 2000,
+            maxOutputTokens: 8192,
             responseMimeType: "application/json",
+          },
+          // Limit thinking to leave room for output
+          thinkingConfig: {
+            thinkingBudget: 2048,
           },
         }),
       }
@@ -85,37 +89,38 @@ Give a concise Adam Khoo analysis of ${symbol}. Return ONLY valid JSON:
 
     const data = await res.json();
 
-    // Gemini 3.1 Pro may return multiple parts (thinking + response)
+    // Extract text from all parts (skip thinking parts)
     const parts = data?.candidates?.[0]?.content?.parts ?? [];
     let text = "";
     for (const part of parts) {
-      if (part.text) text += part.text;
+      if (part.text && !part.thought) text += part.text;
     }
 
     if (!text) {
-      console.error("Gemini empty:", JSON.stringify(data).slice(0, 500));
-      return NextResponse.json({ error: "Empty response from Gemini" }, { status: 502 });
+      console.error("Gemini empty:", JSON.stringify(data).slice(0, 300));
+      return NextResponse.json({ error: "Empty response" }, { status: 502 });
     }
 
-    // Extract JSON — find the outermost { } that contains "action"
-    let jsonStr = "";
-    const start = text.indexOf("{");
-    if (start !== -1) {
+    // With responseMimeType, text should be clean JSON. Try direct parse first.
+    let analysis;
+    try {
+      analysis = JSON.parse(text);
+    } catch {
+      // Fallback: extract JSON via brace matching
+      const start = text.indexOf("{");
+      if (start === -1) {
+        console.error("No JSON found:", text.slice(0, 300));
+        return NextResponse.json({ error: "Could not parse" }, { status: 502 });
+      }
       let depth = 0;
+      let end = start;
       for (let i = start; i < text.length; i++) {
         if (text[i] === "{") depth++;
         else if (text[i] === "}") depth--;
-        if (depth === 0) {
-          jsonStr = text.slice(start, i + 1);
-          break;
-        }
+        if (depth === 0) { end = i + 1; break; }
       }
+      analysis = JSON.parse(text.slice(start, end));
     }
-    if (!jsonStr || !jsonStr.includes('"action"')) {
-      console.error("No JSON in Gemini response:", text.slice(0, 500));
-      return NextResponse.json({ error: "Could not parse analysis" }, { status: 502 });
-    }
-    const analysis = JSON.parse(jsonStr);
 
     return NextResponse.json({ symbol, ...analysis });
   } catch (err) {

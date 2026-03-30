@@ -70,8 +70,11 @@ Return ONLY valid JSON for all 20 tickers.`;
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 5000,
+            maxOutputTokens: 16384,
             responseMimeType: "application/json",
+          },
+          thinkingConfig: {
+            thinkingBudget: 2048,
           },
         }),
       }
@@ -83,10 +86,28 @@ Return ONLY valid JSON for all 20 tickers.`;
     }
 
     const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    // Extract text from non-thinking parts
+    const parts = data?.candidates?.[0]?.content?.parts ?? [];
+    let text = "";
+    for (const part of parts) {
+      if (part.text && !part.thought) text += part.text;
+    }
     if (!text) return NextResponse.json({ error: "Empty response" }, { status: 502 });
 
-    return NextResponse.json(JSON.parse(text));
+    try {
+      return NextResponse.json(JSON.parse(text));
+    } catch {
+      // Fallback brace extraction
+      const start = text.indexOf("{");
+      if (start === -1) return NextResponse.json({ error: "Parse failed" }, { status: 502 });
+      let depth = 0, end = start;
+      for (let i = start; i < text.length; i++) {
+        if (text[i] === "{") depth++;
+        else if (text[i] === "}") depth--;
+        if (depth === 0) { end = i + 1; break; }
+      }
+      return NextResponse.json(JSON.parse(text.slice(start, end)));
+    }
   } catch (err) {
     console.error("Portfolio analysis failed:", err);
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
