@@ -6,8 +6,9 @@ import { Loader2, TrendingUp, TrendingDown, Zap, ArrowRight } from "lucide-react
 
 // Small cap / momentum plays — update this list as needed
 const SMALL_CAPS = [
-  "SSRM", "CDE", "TIGO", "GOLD", "NEM",
-  "KGC", "AEM", "WPM", "FNV", "PAAS",
+  "MOVE", "SSRM", "CDE", "TIGO",
+  "GOLD", "NEM", "KGC", "AEM", "WPM", "FNV", "PAAS",
+  "AGI", "HL", "MAG", "SILV",
 ];
 
 interface QuoteData {
