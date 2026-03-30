@@ -28,8 +28,10 @@ interface AiAnalysis {
   moatScore: number;
   dropReason: string;
   dropExplanation: string;
+  strategy: string;
   intrinsicValue: number | null;
   buyAtPrice: number | null;
+  stopLoss: number | null;
   shortTermSupport: number | null;
   longTermSupport: number | null;
   technicalScore: number;
@@ -101,17 +103,16 @@ export default function StockDetailPage() {
   }
 
   const positive = data.changePercent >= 0;
-  // Use TECHNICAL signal from our SMA calculation, not AI hallucination
-  const action = data.signal ?? "HOLD";
+  // Use AI action when available (considers moat + fundamentals), fallback to technical
+  const action = ai?.action ?? data.signal ?? "HOLD";
   const style = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
 
   const range52 = data.fiftyTwoWeekHigh - data.fiftyTwoWeekLow;
   const pricePos = range52 > 0 ? ((data.price - data.fiftyTwoWeekLow) / range52) * 100 : 50;
 
-  // Entry point = nearest SMA support BELOW current price (from actual data, not AI)
-  const supports = [data.sma50, data.sma150, data.sma200].filter((s) => s > 0 && s < data.price).sort((a, b) => b - a);
-  const entryPoint = supports[0] ?? data.buyAt;
-  const stopLoss = entryPoint ? Math.round(entryPoint * 0.92) : null;
+  // Use AI entry/stop (constrained to real SMA data) or fallback to nearest SMA
+  const entryPoint = ai?.buyAtPrice ?? data.buyAt;
+  const stopLoss = ai?.stopLoss ?? (entryPoint ? Math.round(entryPoint * 0.92) : null);
 
   return (
     <div className="min-h-screen bg-white pb-20 sm:pb-8">
@@ -141,7 +142,15 @@ export default function StockDetailPage() {
         {/* Signal Card — based on REAL SMA data */}
         <div className={`rounded-2xl border ${style.border} ${style.bg} p-5`}>
           <div className={`text-2xl font-bold ${style.text}`}>{action}</div>
-          <p className="mt-1 text-sm leading-relaxed">{data.reason}</p>
+          <p className="mt-1 text-sm leading-relaxed">{ai?.summary ?? data.reason}</p>
+
+          {/* AI Strategy */}
+          {ai?.strategy && (
+            <div className="mt-3 rounded-xl bg-white/60 p-3">
+              <div className="text-[9px] font-bold text-info">STRATEGY</div>
+              <p className="mt-1 text-sm leading-relaxed">{ai.strategy}</p>
+            </div>
+          )}
 
           {/* Key numbers from REAL data */}
           <div className="mt-4 grid grid-cols-3 gap-2">
