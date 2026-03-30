@@ -103,16 +103,22 @@ export default function StockDetailPage() {
   }
 
   const positive = data.changePercent >= 0;
-  // Use AI action when available (considers moat + fundamentals), fallback to technical
-  const action = ai?.action ?? data.signal ?? "HOLD";
+  // AI action for qualitative, but validate it makes sense with technicals
+  const aiAction = ai?.action;
+  const techAction = data.signal;
+  // If AI says BUY but price is below 200 SMA, override to WATCH
+  const action = (aiAction === "BUY" && data.price < data.sma200) ? "WATCH"
+    : aiAction ?? techAction ?? "HOLD";
   const style = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
 
   const range52 = data.fiftyTwoWeekHigh - data.fiftyTwoWeekLow;
   const pricePos = range52 > 0 ? ((data.price - data.fiftyTwoWeekLow) / range52) * 100 : 50;
 
-  // Use AI entry/stop (constrained to real SMA data) or fallback to nearest SMA
-  const entryPoint = ai?.buyAtPrice ?? data.buyAt;
-  const stopLoss = ai?.stopLoss ?? (entryPoint ? Math.round(entryPoint * 0.92) : null);
+  // ALWAYS calculate entry/stop from REAL SMA data — never trust AI for prices
+  const supports = [data.sma50, data.sma150, data.sma200].filter((s) => s > 0 && s <= data.price * 1.05);
+  supports.sort((a, b) => b - a); // highest first (nearest to price)
+  const entryPoint = supports[0] ?? Math.round(data.price * 0.95); // fallback: 5% below current
+  const stopLoss = Math.round(entryPoint * 0.92);
 
   return (
     <div className="min-h-screen bg-white pb-20 sm:pb-8">

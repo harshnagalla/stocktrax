@@ -68,18 +68,15 @@ ${priceContext}
 
 Analyze ${symbol} using Adam Khoo's methodology.
 
-CRITICAL RULES for prices:
-- buyAtPrice MUST be one of the SMA values shown above (50 SMA, 150 SMA, or 200 SMA) — the nearest support BELOW current price
-- shortTermSupport = 50 SMA value from data above
-- longTermSupport = 150 SMA value from data above
-- stopLoss = 8% below buyAtPrice
-- If price is BELOW all SMAs, action should be SELL or WATCH, not BUY
-- If 50 SMA < 150 SMA (trend transitioning), action should be WATCH not BUY
-
-For strategy: tell the user EXACTLY what to do step by step. How much to allocate (% of portfolio), at what price to enter, when to add more, where to set stop loss.
+RULES:
+- Do NOT generate any price numbers. Entry/stop loss are calculated separately from real data.
+- Focus on QUALITATIVE analysis: moat strength, competitive position, growth outlook, risk assessment.
+- If price is below all SMAs, action should be SELL or WATCH.
+- If 50 SMA < 150 SMA (trend transitioning), action should be WATCH.
+- Strategy should say what % of portfolio to allocate and general timing advice, but NOT specific dollar prices.
 
 Return JSON:
-{"action":"BUY/HOLD/SELL/WATCH","confidence":"HIGH/MEDIUM/LOW","summary":"2-3 sentences plain English","strategy":"2-3 sentences: exact steps","moatType":"WIDE/NARROW/NONE","moatReason":"specific competitive advantages","moatScore":1-5,"dropReason":"SENTIMENT/STRUCTURAL/NONE","dropExplanation":"why it dropped","buyAtPrice":number_from_SMA_data,"stopLoss":number,"shortTermSupport":number,"longTermSupport":number,"technicalScore":0-100,"fundamentalScore":0-100,"targetUpside":number}`;
+{"action":"BUY/HOLD/SELL/WATCH","confidence":"HIGH/MEDIUM/LOW","summary":"2-3 sentences plain English","strategy":"2-3 sentences: what to do, % allocation, timing advice (no dollar prices)","moatType":"WIDE/NARROW/NONE","moatReason":"specific competitive advantages","moatScore":1-5,"dropReason":"SENTIMENT/STRUCTURAL/NONE","dropExplanation":"why it dropped","technicalScore":0-100,"fundamentalScore":0-100}`;
 
   try {
     const res = await fetch(
