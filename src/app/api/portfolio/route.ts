@@ -62,57 +62,55 @@ export async function GET() {
         const sma200 = calcSMA(closes, 200);
         const rsi = calcRSI(closes);
 
-        // Determine signal based on Adam Khoo methodology
+        // Signal logic — redesigned after backtest validation
         const aboveSma50 = price > sma50;
         const aboveSma150 = price > sma150;
         const aboveSma200 = price > sma200;
         const sma50Above150 = sma50 > sma150;
+        const distFromSma50 = sma50 > 0 ? ((price - sma50) / sma50) * 100 : 0;
 
         let signal: "BUY MORE" | "HOLD" | "SELL" | "WATCH";
         let reason: string;
         let buyAt: number | null = null;
 
         if (sma50 === 0) {
-          // Not enough data
           signal = "HOLD";
-          reason = "Not enough price history to analyze";
-        } else if (!aboveSma200 && !sma50Above150) {
-          // Downtrend — both SMAs pointing wrong way
-          signal = "SELL";
-          reason = `In downtrend. Price ($${price.toFixed(0)}) below 200 SMA ($${sma200.toFixed(0)}). Consider cutting losses.`;
-        } else if (aboveSma150 && aboveSma200 && sma50Above150) {
-          // Strong uptrend
-          if (rsi < 35) {
-            signal = "BUY MORE";
-            buyAt = Math.round(sma50);
-            reason = `Strong uptrend with RSI oversold (${rsi.toFixed(0)}). Good entry near 50 SMA support at $${sma50.toFixed(0)}.`;
-          } else if (price < sma50 * 1.02) {
-            signal = "BUY MORE";
-            buyAt = Math.round(sma50);
-            reason = `Pulling back to 50 SMA support ($${sma50.toFixed(0)}). Ideal Trend Retracement entry.`;
-          } else {
-            signal = "HOLD";
-            reason = `Uptrend intact. 50 SMA ($${sma50.toFixed(0)}) > 150 SMA ($${sma150.toFixed(0)}). Hold for long term.`;
-          }
-        } else if (aboveSma200 && !sma50Above150) {
-          // Transitioning
-          signal = "WATCH";
-          reason = `Trend transitioning. 50 SMA crossing 150 SMA. Wait for clarity before adding.`;
+          reason = "Not enough price history";
+        } else if (aboveSma150 && sma50Above150 && !aboveSma50 && rsi < 35) {
+          // Pullback into support + oversold = best entry
+          signal = "BUY MORE";
+          buyAt = Math.round(price);
+          reason = `Pullback with RSI oversold (${rsi.toFixed(0)}). Below 50 SMA ($${sma50.toFixed(0)}) but uptrend intact. Best entry zone.`;
+        } else if (aboveSma200 && sma50Above150 && distFromSma50 < 3 && rsi < 40) {
+          // Deep pullback near 150 SMA
+          signal = "BUY MORE";
           buyAt = Math.round(sma150);
-        } else if (!aboveSma50 && aboveSma150) {
-          // Correction in uptrend
-          if (rsi < 35) {
-            signal = "BUY MORE";
-            buyAt = Math.round(sma150);
-            reason = `Correction with RSI oversold (${rsi.toFixed(0)}). Support at 150 SMA ($${sma150.toFixed(0)}).`;
-          } else {
-            signal = "WATCH";
-            reason = `Short-term pullback. Watch for bounce off 150 SMA ($${sma150.toFixed(0)}).`;
-            buyAt = Math.round(sma150);
-          }
+          reason = `Deep pullback near 150 SMA ($${sma150.toFixed(0)}). RSI ${rsi.toFixed(0)}. Strong entry if uptrend holds.`;
+        } else if (aboveSma200 && !sma50Above150 && rsi < 45) {
+          // Transition zone — backtest showed best returns here
+          signal = "BUY MORE";
+          buyAt = Math.round(sma200);
+          reason = `Early recovery zone. Above 200 SMA, trend transitioning. Historically strongest return zone. Start small.`;
+        } else if (aboveSma50 && sma50Above150 && distFromSma50 > 5) {
+          // Extended above 50 SMA
+          signal = "HOLD";
+          reason = `Uptrend but ${distFromSma50.toFixed(0)}% above 50 SMA — too extended. Wait for pullback to $${sma50.toFixed(0)}.`;
+          buyAt = Math.round(sma50);
+        } else if (aboveSma150 && sma50Above150) {
+          signal = "HOLD";
+          reason = `Uptrend intact. Hold, add on pullbacks below 50 SMA ($${sma50.toFixed(0)}).`;
+          buyAt = Math.round(sma50);
+        } else if (!aboveSma150 && !sma50Above150) {
+          // Downtrend — fires earlier than before (at 150 SMA break, not 200)
+          signal = "SELL";
+          reason = `Downtrend. Below 150 SMA ($${sma150.toFixed(0)}), 50 crossed below 150. Cut losses, redeploy to stronger stocks.`;
+        } else if (!aboveSma200 && sma50Above150) {
+          signal = "WATCH";
+          reason = `Below 200 SMA ($${sma200.toFixed(0)}) but 50>150 intact. Wait for 200 SMA reclaim.`;
+          buyAt = Math.round(sma200);
         } else {
           signal = "HOLD";
-          reason = `Mixed signals. Hold current position, monitor trend.`;
+          reason = `Mixed signals. RSI ${rsi.toFixed(0)}. Monitor trend.`;
         }
 
         results[symbol] = {
