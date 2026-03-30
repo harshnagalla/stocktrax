@@ -15,6 +15,7 @@ import SpxTrendCard from "./SpxTrendCard";
 import TreasuryCard from "./TreasuryCard";
 import FearGreedGauge from "./FearGreedGauge";
 import BlueChipWatchlist from "./BlueChipWatchlist";
+import SmallCapPlays from "./SmallCapPlays";
 
 interface QuoteWithAnalysis {
   symbol: string;
@@ -140,6 +141,8 @@ export default function MarketDashboard() {
       </div>
 
       <BlueChipWatchlist />
+
+      <SmallCapPlays />
     </div>
   );
 }
