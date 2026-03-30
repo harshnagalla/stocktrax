@@ -363,18 +363,66 @@ export default function StockDetailPage() {
           </InfoCard>
         </div>
 
-        {/* What Adam Khoo Would Do */}
+        {/* What Adam Khoo Would Do — Structured */}
         <div className="rounded-2xl bg-info/5 p-5">
-          <div className="text-sm font-semibold text-info">What would Adam Khoo do?</div>
-          <div className="mt-2 text-sm leading-relaxed">
-            {action === "BUY"
-              ? `Buy setup confirmed. ${data.buyAt ? `Target entry near $${data.buyAt} (50 SMA support).` : "Price is near support."} This is a "Trend Retracement" entry — buying a quality stock during a temporary pullback. Start with a small position and add more if it drops to the 150 SMA.`
-              : action === "SELL"
-                ? "Downtrend confirmed. Adam Khoo would cut losses and redeploy capital into stronger stocks. Don't hold losers hoping they'll come back — opportunity cost is real."
-                : action === "WATCH"
-                  ? `Trend is unclear. Wait for the 50 SMA to cross back above the 150 SMA with both sloping up. Don't try to catch a falling knife.`
-                  : "Hold your position. Uptrend is intact but no specific entry signal. Be patient — wait for a pullback to the 50 SMA for a better entry if you want to add more."
-            }
+          <div className="text-sm font-semibold text-info mb-3">What would Adam Khoo do?</div>
+
+          <div className="space-y-2">
+            {/* Action */}
+            <div className="rounded-xl bg-white p-3">
+              <div className="text-[10px] text-text-secondary">Action</div>
+              <div className={`mt-1 text-lg font-bold ${style.text}`}>{action}</div>
+            </div>
+
+            {/* Checklist */}
+            <div className="rounded-xl bg-white p-3 space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <span className={aboveSma200 ? "text-bullish" : "text-bearish"}>{aboveSma200 ? "✅" : "❌"}</span>
+                <span>Above 200 SMA — {aboveSma200 ? "Long-term trend intact" : "Long-term trend broken"}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className={sma50Above150 ? "text-bullish" : "text-bearish"}>{sma50Above150 ? "✅" : "❌"}</span>
+                <span>50 SMA above 150 SMA — {sma50Above150 ? "Uptrend confirmed" : "Trend weakening"}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className={data.rsi < 40 ? "text-bullish" : data.rsi > 70 ? "text-bearish" : "text-text-secondary"}>{data.rsi < 40 ? "✅" : data.rsi > 70 ? "❌" : "➖"}</span>
+                <span>RSI {data.rsi} — {data.rsi < 30 ? "Oversold, potential bounce" : data.rsi < 40 ? "Approaching oversold, good timing" : data.rsi > 70 ? "Overbought, wait for pullback" : "Neutral timing"}</span>
+              </div>
+              {ai && (
+                <div className="flex items-start gap-2">
+                  <span className={ai.dropReason === "SENTIMENT" ? "text-bullish" : ai.dropReason === "STRUCTURAL" ? "text-bearish" : "text-text-secondary"}>
+                    {ai.dropReason === "SENTIMENT" ? "✅" : ai.dropReason === "STRUCTURAL" ? "❌" : "➖"}
+                  </span>
+                  <span>Drop type: {ai.dropReason} — {ai.dropReason === "SENTIMENT" ? "Temporary, buying opportunity" : ai.dropReason === "STRUCTURAL" ? "Fundamental problem, be cautious" : "No significant drop"}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Recommendation */}
+            <div className="rounded-xl bg-white p-3">
+              <div className="text-[10px] text-text-secondary">Recommendation</div>
+              <p className="mt-1 text-sm leading-relaxed">
+                {action === "BUY"
+                  ? `Buy setup. ${data.buyAt ? `Enter near $${data.buyAt} (50 SMA support).` : "Near support."} Start with a small position (25-50% of planned allocation). Add more if it dips to $${data.sma150.toFixed(0)} (150 SMA).`
+                  : action === "SELL"
+                    ? `Cut losses. Redeploy capital into stocks with better setups. The stock is below its 200 SMA ($${data.sma200.toFixed(0)}) — this means the long-term trend is broken.`
+                    : action === "WATCH"
+                      ? `Don't buy yet. Wait for 50 SMA ($${data.sma50.toFixed(0)}) to cross above 150 SMA ($${data.sma150.toFixed(0)}). Set a price alert at $${data.sma150.toFixed(0)}.`
+                      : `Hold. Uptrend intact. If adding, wait for price to pull back to $${data.sma50.toFixed(0)} (50 SMA) for better entry. Don't chase the price up.`
+                }
+              </p>
+            </div>
+
+            {/* Position sizing */}
+            <div className="rounded-xl bg-white p-3">
+              <div className="text-[10px] text-text-secondary">Position Sizing (Adam Khoo&apos;s Rules)</div>
+              <div className="mt-1 space-y-1 text-xs text-text-secondary">
+                <div>• Risk 1.5-3% of total capital per stock</div>
+                <div>• Stop loss: 5-8% below purchase price</div>
+                <div>• Max 8-10 stocks in portfolio</div>
+                <div>• Keep 10% in cash always</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
