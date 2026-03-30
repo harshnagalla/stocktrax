@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSymbol, checkRateLimit } from "@/lib/api-utils";
+import { getCached, setCache, todayKey } from "@/lib/cache";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -35,6 +36,13 @@ export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get("symbol")?.toUpperCase();
   if (!symbol || !validateSymbol(symbol)) {
     return NextResponse.json({ error: "Invalid symbol" }, { status: 400 });
+  }
+
+  // Check cache — analysis doesn't change within a day
+  const cacheKey = `analysis:${symbol}:${todayKey()}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
   }
 
   if (!GEMINI_API_KEY) {
@@ -118,7 +126,9 @@ Analyze ${symbol}. Return JSON:
       analysis = JSON.parse(text.slice(start, end));
     }
 
-    return NextResponse.json({ symbol, ...analysis });
+    const result = { symbol, ...analysis };
+    setCache(cacheKey, result);
+    return NextResponse.json(result);
   } catch (err) {
     console.error("Analysis failed:", err);
     return NextResponse.json({ error: "Analysis failed — try again" }, { status: 500 });

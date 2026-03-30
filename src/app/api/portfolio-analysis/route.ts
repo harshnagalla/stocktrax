@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/api-utils";
+import { getCached, setCache, todayKey } from "@/lib/cache";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -12,6 +13,12 @@ export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const cacheKey = `portfolio-analysis:${todayKey()}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
   }
 
   if (!GEMINI_API_KEY) {
@@ -92,7 +99,9 @@ Return ONLY valid JSON for all 20 tickers.`;
     if (!text) return NextResponse.json({ error: "Empty response" }, { status: 502 });
 
     try {
-      return NextResponse.json(JSON.parse(text));
+      const result = JSON.parse(text);
+      setCache(cacheKey, result);
+      return NextResponse.json(result);
     } catch {
       // Fallback brace extraction
       const start = text.indexOf("{");
@@ -103,7 +112,9 @@ Return ONLY valid JSON for all 20 tickers.`;
         else if (text[i] === "}") depth--;
         if (depth === 0) { end = i + 1; break; }
       }
-      return NextResponse.json(JSON.parse(text.slice(start, end)));
+      const result = JSON.parse(text.slice(start, end));
+      setCache(cacheKey, result);
+      return NextResponse.json(result);
     }
   } catch (err) {
     console.error("Portfolio analysis failed:", err);

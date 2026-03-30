@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/api-utils";
+import { getCached, setCache, todayKey } from "@/lib/cache";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -8,6 +9,13 @@ export async function POST(request: NextRequest) {
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
+
+  const cacheKey = `bluechip-analysis:${todayKey()}`;
+  const cached = getCached(cacheKey);
+  if (cached) {
+    return NextResponse.json(cached);
+  }
+
   if (!GEMINI_API_KEY) {
     return NextResponse.json({ error: "No Gemini key" }, { status: 500 });
   }
@@ -55,8 +63,9 @@ All 10 tickers. Return ONLY valid JSON.`;
     }
     if (!text) return NextResponse.json({ error: "Empty" }, { status: 502 });
 
+    let result;
     try {
-      return NextResponse.json(JSON.parse(text));
+      result = JSON.parse(text);
     } catch {
       const start = text.indexOf("{");
       if (start === -1) return NextResponse.json({ error: "Parse failed" }, { status: 502 });
@@ -66,8 +75,10 @@ All 10 tickers. Return ONLY valid JSON.`;
         else if (text[i] === "}") depth--;
         if (depth === 0) { end = i + 1; break; }
       }
-      return NextResponse.json(JSON.parse(text.slice(start, end)));
+      result = JSON.parse(text.slice(start, end));
     }
+    setCache(cacheKey, result);
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
   }
