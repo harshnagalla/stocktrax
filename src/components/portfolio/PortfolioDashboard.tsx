@@ -224,6 +224,12 @@ export default function PortfolioDashboard() {
           {totalPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           {totalPositive ? "+" : ""}${totalPnl.toFixed(2)} ({totalPositive ? "+" : ""}{totalPnlPct.toFixed(2)}%)
         </div>
+        <div className="mt-1.5 flex gap-4 text-[11px] text-text-secondary">
+          <span>Invested: ${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className={`font-bold ${totalPositive ? "text-bullish" : "text-bearish"}`}>
+            {totalPositive ? "+" : ""}{totalPnlPct.toFixed(2)}% overall return
+          </span>
+        </div>
         <div className="mt-3 flex items-center justify-between">
           <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
             {Object.entries(actionCounts).map(([action, count]) => {

@@ -12,24 +12,29 @@ interface ETFHoldingItem {
 interface ETFData {
   symbol: string;
   name: string;
+  totalHoldings: number;
   holdings: ETFHoldingItem[];
 }
 
 interface OverlapPair {
   etf1: string;
   etf2: string;
+  sharedCount: number;
   sharedHoldings: { symbol: string; name: string; pct1: number; pct2: number }[];
-  overlapPercent: number; // combined weight of shared holdings (avg of both ETFs)
+  overlapPercent: number;
+}
+
+interface OverlapMatrix {
+  [etf1: string]: { [etf2: string]: number }; // number = shared company count
 }
 
 async function fetchETFHoldings(symbol: string): Promise<ETFData | null> {
   try {
-    // Use Yahoo Finance quoteSummary with topHoldings module
     const res = await fetch(
       `https://query1.finance.yahoo.com/v11/finance/quoteSummary/${symbol}?modules=topHoldings,price`,
       {
         headers: { "User-Agent": "Mozilla/5.0" },
-        next: { revalidate: 86400 }, // cache 24h — holdings don't change often
+        next: { revalidate: 86400 },
       }
     );
     if (!res.ok) return null;
@@ -50,21 +55,34 @@ async function fetchETFHoldings(symbol: string): Promise<ETFData | null> {
         ) * 100,
       }));
 
-    return { symbol, name, holdings };
+    return {
+      symbol,
+      name,
+      totalHoldings: holdings.length,
+      holdings,
+    };
   } catch {
     return null;
   }
 }
 
-function computeOverlaps(etfs: ETFData[]): OverlapPair[] {
-  const overlaps: OverlapPair[] = [];
+function computeOverlaps(etfs: ETFData[]): { pairs: OverlapPair[]; matrix: OverlapMatrix } {
+  const pairs: OverlapPair[] = [];
+  const matrix: OverlapMatrix = {};
+
+  // Initialize matrix
+  for (const etf of etfs) {
+    matrix[etf.symbol] = {};
+    for (const other of etfs) {
+      matrix[etf.symbol][other.symbol] = etf.symbol === other.symbol ? etf.totalHoldings : 0;
+    }
+  }
 
   for (let i = 0; i < etfs.length; i++) {
     for (let j = i + 1; j < etfs.length; j++) {
       const etf1 = etfs[i];
       const etf2 = etfs[j];
 
-      // Build lookup of holdings by symbol for etf2
       const etf2Map = new Map(
         etf2.holdings.map((h) => [h.symbol, h])
       );
@@ -82,12 +100,17 @@ function computeOverlaps(etfs: ETFData[]): OverlapPair[] {
         }
       }
 
-      if (shared.length > 0) {
+      const sharedCount = shared.length;
+      matrix[etf1.symbol][etf2.symbol] = sharedCount;
+      matrix[etf2.symbol][etf1.symbol] = sharedCount;
+
+      if (sharedCount > 0) {
         const totalPct1 = shared.reduce((s, h) => s + h.pct1, 0);
         const totalPct2 = shared.reduce((s, h) => s + h.pct2, 0);
-        overlaps.push({
+        pairs.push({
           etf1: etf1.symbol,
           etf2: etf2.symbol,
+          sharedCount,
           sharedHoldings: shared.sort((a, b) => b.pct1 + b.pct2 - (a.pct1 + a.pct2)),
           overlapPercent: Math.round(((totalPct1 + totalPct2) / 2) * 100) / 100,
         });
@@ -95,13 +118,16 @@ function computeOverlaps(etfs: ETFData[]): OverlapPair[] {
     }
   }
 
-  return overlaps.sort((a, b) => b.overlapPercent - a.overlapPercent);
+  return {
+    pairs: pairs.sort((a, b) => b.overlapPercent - a.overlapPercent),
+    matrix,
+  };
 }
 
 export async function GET() {
   const etfResults = await Promise.all(ETF_TICKERS.map(fetchETFHoldings));
   const etfs = etfResults.filter((e): e is ETFData => e !== null);
-  const overlaps = computeOverlaps(etfs);
+  const { pairs, matrix } = computeOverlaps(etfs);
 
-  return NextResponse.json({ etfs, overlaps });
+  return NextResponse.json({ etfs, overlaps: pairs, matrix });
 }
