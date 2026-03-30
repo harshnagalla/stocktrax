@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { HOLDINGS, type Holding } from "./holdings";
+import { HOLDINGS, CASH_HOLDINGS, type Holding } from "./holdings";
 import Link from "next/link";
-import { Loader2, TrendingUp, TrendingDown, Shield, ArrowRightLeft } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Shield, ArrowRightLeft, Wallet } from "lucide-react";
 import ETFRebalancer from "./ETFRebalancer";
 
 interface QuoteData {
@@ -111,8 +111,21 @@ export default function PortfolioDashboard() {
   const tiger = enriched.filter((h) => h.account === "Tiger");
   const ibkr = enriched.filter((h) => h.account === "IBKR");
 
-  const totalValue = enriched.reduce((s, h) => s + h.marketValue, 0);
-  const totalCost = enriched.reduce((s, h) => s + h.avgCost * h.shares, 0);
+  // SGD to USD approximate rate (used for cash holdings display)
+  const SGD_TO_USD = 0.75;
+
+  // Cash holdings converted to USD
+  const cashValue = CASH_HOLDINGS.reduce(
+    (s, c) => s + (c.currency === "SGD" ? c.amount * SGD_TO_USD : c.amount),
+    0
+  );
+  const cashCost = CASH_HOLDINGS.reduce(
+    (s, c) => s + (c.currency === "SGD" ? c.cost * SGD_TO_USD : c.cost),
+    0
+  );
+
+  const totalValue = enriched.reduce((s, h) => s + h.marketValue, 0) + cashValue;
+  const totalCost = enriched.reduce((s, h) => s + h.avgCost * h.shares, 0) + cashCost;
   const totalPnl = totalValue - totalCost;
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   const totalPositive = totalPnl >= 0;
@@ -265,6 +278,47 @@ export default function PortfolioDashboard() {
           <div className="mb-2 px-1 text-sm font-semibold">{account.name}</div>
           <div className="space-y-2">
             {account.holdings.map(renderCard)}
+            {/* Cash / money market holdings */}
+            {CASH_HOLDINGS.filter((c) => c.account === account.name.split(" ")[0] as "Tiger" | "IBKR").map((c) => {
+              const valueUSD = c.currency === "SGD" ? c.amount * SGD_TO_USD : c.amount;
+              const costUSD = c.currency === "SGD" ? c.cost * SGD_TO_USD : c.cost;
+              const pnl = valueUSD - costUSD;
+              const pnlPct = costUSD > 0 ? (pnl / costUSD) * 100 : 0;
+              const positive = pnl >= 0;
+              return (
+                <div key={c.name} className="rounded-2xl bg-bg-surface p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Wallet size={14} className="text-info" />
+                        <span className="text-sm font-bold">{c.name}</span>
+                      </div>
+                      <div className="text-[11px] text-text-secondary">Money Market Fund ({c.currency})</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold">
+                        {c.currency === "SGD" ? "S$" : "$"}{c.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      {c.currency === "SGD" && (
+                        <div className="text-[10px] text-text-secondary">~${valueUSD.toLocaleString(undefined, { maximumFractionDigits: 0 })} USD</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3 text-[11px]">
+                    <span className="text-text-secondary">
+                      P&L <strong className={positive ? "text-bullish" : "text-bearish"}>
+                        {positive ? "+" : ""}{pnlPct.toFixed(2)}%
+                      </strong>
+                    </span>
+                    <span className="text-text-secondary">
+                      Unrealized: <strong className={positive ? "text-bullish" : "text-bearish"}>
+                        {positive ? "+" : ""}{c.currency === "SGD" ? "S$" : "$"}{(c.amount - c.cost).toFixed(2)}
+                      </strong>
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}

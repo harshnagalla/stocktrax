@@ -36,5 +36,19 @@ export const HOLDINGS: Holding[] = [
   { ticker: "VOO", shares: 40, avgCost: 541.20, account: "IBKR" },
 ];
 
+// Cash / money market fund positions (no Yahoo Finance quotes)
+export interface CashHolding {
+  name: string;
+  amount: number;
+  cost: number;
+  currency: "USD" | "SGD";
+  account: "Tiger" | "IBKR";
+}
+
+export const CASH_HOLDINGS: CashHolding[] = [
+  { name: "LionGlobal SGD Enhanced Liquidity", amount: 27783.94, cost: 27613.03, currency: "SGD", account: "Tiger" },
+  { name: "Fullerton USD Cash", amount: 34.92, cost: 34.62, currency: "USD", account: "Tiger" },
+];
+
 // Unique tickers for batch quote fetching
 export const UNIQUE_TICKERS = [...new Set(HOLDINGS.map((h) => h.ticker))];
