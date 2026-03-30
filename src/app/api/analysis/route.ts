@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
 
 ${priceContext}
 
-Analyze ${symbol}. Be BRIEF. Return JSON:
-{"action":"BUY","confidence":"HIGH","moat":"short","dropReason":"SENTIMENT","dropExplanation":"short","intrinsicValue":500,"buyAtPrice":350,"summary":"short"}`;
+Analyze ${symbol}. Return JSON:
+{"action":"BUY/HOLD/SELL/WATCH","confidence":"HIGH/MEDIUM/LOW","summary":"2-3 sentences: what to do and why, plain English","moatType":"WIDE/NARROW/NONE","moatReason":"Why this company has a moat - specific competitive advantages (switching costs, network effects, brand, patents, etc)","moatDuration":"How many years this moat is likely to last","dropReason":"SENTIMENT/STRUCTURAL/NONE","dropExplanation":"Why the price dropped and whether it matters long-term","intrinsicValue":number_or_null,"buyAtPrice":number_or_null,"shortTermSupport":number_or_null,"longTermSupport":number_or_null,"technicalScore":0-100,"fundamentalScore":0-100,"moatScore":1-5,"targetUpside":percentage_number}`;
 
   try {
     const res = await fetch(
