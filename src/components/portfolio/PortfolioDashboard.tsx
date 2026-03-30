@@ -7,6 +7,7 @@ import {
   Plus, Upload, X, Camera, ArrowRightLeft,
 } from "lucide-react";
 import ETFRebalancer from "./ETFRebalancer";
+import { authFetch } from "@/lib/api-client";
 
 interface Holding {
   ticker: string;
@@ -92,14 +93,14 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
     async function load() {
       // Try seed first (only works for harshnagalla@gmail.com, only if empty)
       if (email) {
-        await fetch("/api/seed-portfolio", {
+        await authFetch("/api/seed-portfolio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId, email }),
         }).catch(() => {});
       }
 
-      const res = await fetch(`/api/user-portfolio?userId=${userId}`);
+      const res = await authFetch('/api/user-portfolio');
       const data = await res.json();
       if (data.holdings?.length > 0) setHoldings(data.holdings);
       setLoading(false);
@@ -131,10 +132,10 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   // Save holdings to Firestore
   const saveHoldings = useCallback(async (newHoldings: Holding[]) => {
     setHoldings(newHoldings);
-    await fetch("/api/user-portfolio", {
+    await authFetch("/api/user-portfolio", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, holdings: newHoldings }),
+      body: JSON.stringify({ holdings: newHoldings }),
     });
   }, [userId]);
 
@@ -169,7 +170,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
         reader.readAsDataURL(file);
       });
 
-      const res = await fetch("/api/parse-portfolio", {
+      const res = await authFetch("/api/parse-portfolio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: base64 }),

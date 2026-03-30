@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { validateSymbol, validateRange, checkRateLimit } from "@/lib/api-utils";
 
 // Server-side historical price proxy
 // GET /api/history?symbol=MSFT&range=1y
 
 export async function GET(request: NextRequest) {
-  const symbol = request.nextUrl.searchParams.get("symbol");
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  const symbol = request.nextUrl.searchParams.get("symbol")?.toUpperCase();
   const range = request.nextUrl.searchParams.get("range") ?? "1y";
 
-  if (!symbol) {
-    return NextResponse.json({ error: "symbol param required" }, { status: 400 });
+  if (!symbol || !validateSymbol(symbol)) {
+    return NextResponse.json({ error: "Invalid symbol" }, { status: 400 });
+  }
+  if (!validateRange(range)) {
+    return NextResponse.json({ error: "Invalid range" }, { status: 400 });
   }
 
   try {

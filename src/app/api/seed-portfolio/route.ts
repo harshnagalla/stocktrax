@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-
-// POST /api/seed-portfolio — seeds portfolio for harshnagalla@gmail.com on first login
-// Only runs if portfolio is empty
+import { verifyAuth, unauthorized } from "@/lib/auth-middleware";
 
 const SEED_HOLDINGS = [
   { ticker: "ALM", shares: 200, avgCost: 6.31, account: "Tiger" },
@@ -33,19 +31,21 @@ const SEED_HOLDINGS = [
 const SEED_EMAIL = "harshnagalla@gmail.com";
 
 export async function POST(request: NextRequest) {
-  const { userId, email } = await request.json();
+  const userId = await verifyAuth(request);
+  if (!userId) return unauthorized();
 
-  if (!userId || email !== SEED_EMAIL) {
+  // Get user's email from the token (already verified)
+  const { getAuth } = await import("firebase-admin/auth");
+  const user = await getAuth().getUser(userId);
+  if (user.email !== SEED_EMAIL) {
     return NextResponse.json({ seeded: false });
   }
 
-  // Check if portfolio already exists
   const doc = await db.collection("user_portfolios").doc(userId).get();
   if (doc.exists && doc.data()?.holdings?.length > 0) {
     return NextResponse.json({ seeded: false, reason: "already exists" });
   }
 
-  // Seed the portfolio
   await db.collection("user_portfolios").doc(userId).set({
     holdings: SEED_HOLDINGS,
     updatedAt: new Date(),

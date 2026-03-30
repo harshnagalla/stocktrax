@@ -1,15 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-
-// GET /api/user-portfolio?userId=xxx — fetch user's portfolio
-// POST /api/user-portfolio — add/update holdings
-// DELETE /api/user-portfolio — remove a holding
+import { verifyAuth, unauthorized } from "@/lib/auth-middleware";
 
 const COLLECTION = "user_portfolios";
 
 export async function GET(request: NextRequest) {
-  const userId = request.nextUrl.searchParams.get("userId");
-  if (!userId) return NextResponse.json({ error: "userId required" }, { status: 400 });
+  // Verify auth — user can only read their own portfolio
+  const userId = await verifyAuth(request);
+  if (!userId) return unauthorized();
 
   try {
     const doc = await db.collection(COLLECTION).doc(userId).get();
@@ -22,11 +20,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { userId, holdings } = body;
+  const userId = await verifyAuth(request);
+  if (!userId) return unauthorized();
 
-  if (!userId || !holdings) {
-    return NextResponse.json({ error: "userId and holdings required" }, { status: 400 });
+  const body = await request.json();
+  const { holdings } = body;
+
+  if (!holdings) {
+    return NextResponse.json({ error: "holdings required" }, { status: 400 });
   }
 
   try {

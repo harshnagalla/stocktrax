@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validateSymbol } from "@/lib/api-utils";
+import { validateSymbol, checkRateLimit } from "@/lib/api-utils";
 
 // Server-side quote + analysis proxy
 // GET /api/quotes?symbols=VOO,QQQ,MSFT&analyze=true
@@ -49,6 +49,11 @@ function getSignal(price: number, sma50: number, sma150: number, sma200: number,
 }
 
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for") ?? "unknown";
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const symbols = request.nextUrl.searchParams.get("symbols");
   const analyze = request.nextUrl.searchParams.get("analyze") === "true";
 
