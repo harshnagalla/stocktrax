@@ -68,7 +68,7 @@ export default function ScreenerDashboard() {
       <div className="space-y-3">
         <div className="rounded-2xl bg-bg-surface p-5">
           <div className="text-sm font-semibold">Stock Screener</div>
-          <div className="text-xs text-text-secondary">Scanning ~70 S&P 500 stocks using Adam Khoo&apos;s 7-Step Formula...</div>
+          <div className="text-xs text-text-secondary">Scanning ~70 S&P 500 stocks using 7-Step Value Formula...</div>
         </div>
         <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-12 text-text-secondary">
           <Loader2 size={18} className="animate-spin" />
@@ -96,7 +96,7 @@ export default function ScreenerDashboard() {
       <div className="rounded-2xl bg-bg-surface p-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold">Adam Khoo Stock Screener</div>
+            <div className="text-sm font-semibold">Stock Screener</div>
             <div className="text-xs text-text-secondary">
               {data.total} stocks scanned · {data.strongBuys} strong buys · {data.buys} buys
             </div>

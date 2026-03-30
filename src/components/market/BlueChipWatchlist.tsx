@@ -112,7 +112,7 @@ export default function BlueChipWatchlist() {
     <div>
       <div className="mb-2 px-1">
         <div className="text-sm font-semibold">Blue Chip Moat Stocks</div>
-        <div className="text-xs text-text-secondary">Strong moat companies — Adam Khoo&apos;s picks</div>
+        <div className="text-xs text-text-secondary">Strong moat companies — value picks</div>
       </div>
 
       <div className="space-y-2">

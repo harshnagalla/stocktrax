@@ -85,7 +85,7 @@ export default function Home() {
                 <div className="mt-3 text-base font-semibold">Analyze a Stock</div>
                 <div className="mt-1 text-sm text-text-secondary">
                   Type a ticker above (e.g. AAPL, MSFT) to get a full
-                  Adam Khoo VMI analysis with plain English explanations
+                  VMI analysis with plain English explanations
                 </div>
               </div>
             ) : loadingTickers.size > 0 && Object.keys(tickerDataMap).length === 0 ? (

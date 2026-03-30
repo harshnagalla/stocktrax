@@ -136,13 +136,13 @@ export default function StockDetailPage() {
   let trendExplanation: string;
   if (aboveSma50 && sma50Above150 && aboveSma200) {
     trendLabel = "Uptrend ↑";
-    trendExplanation = "All moving averages are lined up bullishly. This is Adam Khoo's ideal condition for buying.";
+    trendExplanation = "All moving averages are lined up bullishly. This is the ideal condition for buying.";
   } else if (!aboveSma50 && aboveSma150) {
     trendLabel = "Correction →";
     trendExplanation = "Price pulled back below 50 SMA but still above 150 SMA. Could be a buying opportunity if it bounces.";
   } else if (!aboveSma200) {
     trendLabel = "Downtrend ↓";
-    trendExplanation = "Price below 200 SMA. Adam Khoo says wait for it to get back above before buying.";
+    trendExplanation = "Price below 200 SMA. Wait for it to get back above before buying.";
   } else {
     trendLabel = "Transitioning →";
     trendExplanation = "Trend is unclear. 50 SMA crossing 150 SMA. Wait for clarity.";
@@ -179,7 +179,7 @@ export default function StockDetailPage() {
         <div className="rounded-2xl bg-bg-surface p-5">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-info">
             <Sparkles size={14} />
-            Adam Khoo Analysis
+            Smart Analysis
           </div>
 
           {aiLoading ? (
@@ -291,7 +291,7 @@ export default function StockDetailPage() {
             <div className="text-xl font-bold">${data.sma200.toFixed(0)}</div>
             <div className="mt-1 flex gap-1.5 text-[10px] text-text-secondary leading-relaxed">
               <Info size={10} className="mt-0.5 shrink-0 text-info" />
-              <span>{aboveSma200 ? "Price above. Long-term trend is intact. Good sign." : "Price below the 200 SMA. Adam Khoo says this is a red flag — the long-term trend is broken."}</span>
+              <span>{aboveSma200 ? "Price above. Long-term trend is intact. Good sign." : "Price below the 200 SMA. This is a red flag — the long-term trend is broken."}</span>
             </div>
           </InfoCard>
         </div>
@@ -331,7 +331,7 @@ export default function StockDetailPage() {
               {pricePos < 20
                 ? "Near 52-week lows. Could be cheap or could be falling for a reason — check the moat and drop type."
                 : pricePos > 80
-                  ? "Near highs. Less margin of safety. Adam Khoo prefers buying on pullbacks."
+                  ? "Near highs. Less margin of safety. Better to buy on pullbacks."
                   : "In the middle of its range. Check support levels for entry timing."}
             </span>
           </div>
@@ -363,9 +363,9 @@ export default function StockDetailPage() {
           </InfoCard>
         </div>
 
-        {/* What Adam Khoo Would Do — Structured */}
+        {/* Action Plan */}
         <div className="rounded-2xl bg-info/5 p-5">
-          <div className="text-sm font-semibold text-info mb-3">What would Adam Khoo do?</div>
+          <div className="text-sm font-semibold text-info mb-3">What should you do?</div>
 
           <div className="space-y-2">
             {/* Action */}
@@ -415,7 +415,7 @@ export default function StockDetailPage() {
 
             {/* Position sizing */}
             <div className="rounded-xl bg-white p-3">
-              <div className="text-[10px] text-text-secondary">Position Sizing (Adam Khoo&apos;s Rules)</div>
+              <div className="text-[10px] text-text-secondary">Position Sizing Rules</div>
               <div className="mt-1 space-y-1 text-xs text-text-secondary">
                 <div>• Risk 1.5-3% of total capital per stock</div>
                 <div>• Stop loss: 5-8% below purchase price</div>

@@ -14,7 +14,7 @@ export default function AnalysisDashboard({ tickerData }: AnalysisDashboardProps
         <div key={data.quote.symbol} className="space-y-4">
           <StockHeader data={data} />
           <div className="rounded-2xl bg-bg-surface p-5 text-center text-xs text-text-secondary">
-            VMI Score + Adam Khoo Analysis — coming soon
+            VMI Score + Analysis — coming soon
           </div>
         </div>
       ))}

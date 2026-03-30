@@ -8,9 +8,9 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "StockTrax — Adam Khoo Stock Analysis Dashboard",
+  title: "StockTrax — Stock Analysis Dashboard",
   description:
-    "VMI scoring, technical analysis, and market sentiment powered by Adam Khoo's methodology",
+    "VMI scoring, technical analysis, and market sentiment for smart investing",
 };
 
 export default function RootLayout({

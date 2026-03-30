@@ -160,7 +160,7 @@ export function calculateSentimentScore(
     label = "Capitulation";
     color = "text-bearish";
     commentary =
-      'Extreme fear — Adam Khoo says "Be greedy when others are fearful." Look for quality stocks at discounts.';
+      'Extreme fear — "Be greedy when others are fearful." Look for quality stocks at discounts.';
   }
 
   return { score, label, color, commentary };

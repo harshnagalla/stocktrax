@@ -88,7 +88,7 @@ export async function GET() {
           } else if (price < sma50 * 1.02) {
             signal = "BUY MORE";
             buyAt = Math.round(sma50);
-            reason = `Pulling back to 50 SMA support ($${sma50.toFixed(0)}). Adam Khoo's ideal Trend Retracement entry.`;
+            reason = `Pulling back to 50 SMA support ($${sma50.toFixed(0)}). Ideal Trend Retracement entry.`;
           } else {
             signal = "HOLD";
             reason = `Uptrend intact. 50 SMA ($${sma50.toFixed(0)}) > 150 SMA ($${sma150.toFixed(0)}). Hold for long term.`;
