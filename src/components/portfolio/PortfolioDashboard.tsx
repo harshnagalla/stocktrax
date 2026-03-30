@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { HOLDINGS, type Holding } from "./holdings";
 import Link from "next/link";
-import { Loader2, TrendingUp, TrendingDown, Shield } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Shield, ArrowRightLeft } from "lucide-react";
+import ETFRebalancer from "./ETFRebalancer";
 
 interface QuoteData {
   price: number;
@@ -73,6 +74,7 @@ export default function PortfolioDashboard() {
   const [aiData, setAiData] = useState<Record<string, AiData>>({});
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(true);
+  const [showRebalancer, setShowRebalancer] = useState(false);
 
   useEffect(() => {
     fetch("/api/portfolio")
@@ -222,18 +224,35 @@ export default function PortfolioDashboard() {
           {totalPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           {totalPositive ? "+" : ""}${totalPnl.toFixed(2)} ({totalPositive ? "+" : ""}{totalPnlPct.toFixed(2)}%)
         </div>
-        <div className="mt-3 flex flex-wrap gap-1.5 text-[10px] font-bold">
-          {Object.entries(actionCounts).map(([action, count]) => {
-            const s = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
-            return <span key={action} className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>{count} {action}</span>;
-          })}
-          {aiLoading && (
-            <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary">
-              <Loader2 size={10} className="animate-spin" /> Analyzing...
-            </span>
-          )}
+        <div className="mt-3 flex items-center justify-between">
+          <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+            {Object.entries(actionCounts).map(([action, count]) => {
+              const s = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
+              return <span key={action} className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>{count} {action}</span>;
+            })}
+            {aiLoading && (
+              <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary">
+                <Loader2 size={10} className="animate-spin" /> Analyzing...
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowRebalancer((v) => !v)}
+            className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[10px] font-bold transition-colors ${
+              showRebalancer
+                ? "bg-info/15 text-info"
+                : "bg-bg-surface text-text-secondary hover:text-info"
+            }`}
+          >
+            <ArrowRightLeft size={12} />
+            ETF Rebalance
+          </button>
         </div>
       </div>
+
+      {showRebalancer && (
+        <ETFRebalancer quotes={quotes as Record<string, { price: number; name?: string }>} />
+      )}
 
       {[{ name: "Tiger Brokers", holdings: tiger }, { name: "IBKR", holdings: ibkr }].map((account) => (
         <div key={account.name}>
