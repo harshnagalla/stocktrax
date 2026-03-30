@@ -167,7 +167,7 @@ export async function GET(request: NextRequest) {
   const cacheKey = `screener-ai:${todayKey()}`;
   let aiData: Record<string, { analysis: string; fundamentalScore: number; moatScore: number; targetUpside: number }> = {};
 
-  const cached = getCached<typeof aiData>(cacheKey);
+  const cached = await getCached<typeof aiData>(cacheKey);
   if (cached) {
     aiData = cached;
   } else if (GEMINI_API_KEY) {
@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
         for (const part of parts) { if (part.text && !part.thought) text += part.text; }
         if (text) {
           try { aiData = JSON.parse(text); } catch { /* skip */ }
-          if (Object.keys(aiData).length > 0) setCache(cacheKey, aiData);
+          if (Object.keys(aiData).length > 0) await setCache(cacheKey, aiData);
         }
       }
     } catch { /* Gemini failed, continue with technical-only results */ }

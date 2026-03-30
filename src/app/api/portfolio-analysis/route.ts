@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   const cacheKey = `portfolio-analysis:${todayKey()}`;
-  const cached = getCached(cacheKey);
+  const cached = await getCached(cacheKey);
   if (cached) {
     return NextResponse.json(cached);
   }
@@ -100,7 +100,7 @@ Return ONLY valid JSON for all 20 tickers.`;
 
     try {
       const result = JSON.parse(text);
-      setCache(cacheKey, result);
+      await setCache(cacheKey, result);
       return NextResponse.json(result);
     } catch {
       // Fallback brace extraction
@@ -113,7 +113,7 @@ Return ONLY valid JSON for all 20 tickers.`;
         if (depth === 0) { end = i + 1; break; }
       }
       const result = JSON.parse(text.slice(start, end));
-      setCache(cacheKey, result);
+      await setCache(cacheKey, result);
       return NextResponse.json(result);
     }
   } catch (err) {

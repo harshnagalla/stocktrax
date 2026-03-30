@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   }
 
   const cacheKey = `bluechip-analysis:${todayKey()}`;
-  const cached = getCached(cacheKey);
+  const cached = await getCached(cacheKey);
   if (cached) {
     return NextResponse.json(cached);
   }
@@ -77,7 +77,7 @@ All 10 tickers. Return ONLY valid JSON.`;
       }
       result = JSON.parse(text.slice(start, end));
     }
-    setCache(cacheKey, result);
+    await setCache(cacheKey, result);
     return NextResponse.json(result);
   } catch {
     return NextResponse.json({ error: "Analysis failed" }, { status: 500 });

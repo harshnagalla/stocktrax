@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   // Check cache — analysis doesn't change within a day
   const cacheKey = `analysis:${symbol}:${todayKey()}`;
-  const cached = getCached(cacheKey);
+  const cached = await getCached(cacheKey);
   if (cached) {
     return NextResponse.json(cached);
   }
@@ -127,7 +127,7 @@ Analyze ${symbol}. Return JSON:
     }
 
     const result = { symbol, ...analysis };
-    setCache(cacheKey, result);
+    await setCache(cacheKey, result);
     return NextResponse.json(result);
   } catch (err) {
     console.error("Analysis failed:", err);
