@@ -48,6 +48,8 @@ interface EnrichedHolding extends Holding {
   pnlPct: number;
 }
 
+const ETF_TICKERS = new Set(["QQQ", "VOO", "VTWO", "XLV", "IBIT", "CWEB", "SPY", "IWM", "DIA", "VTI", "SCHD", "ARKK", "EEM", "GLD", "TLT", "HYG", "LQD", "BND", "VEA", "VWO"]);
+
 const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
   BUY: { bg: "bg-bullish/15", text: "text-bullish" },
   HOLD: { bg: "bg-info/10", text: "text-info" },
@@ -249,6 +251,11 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const actionCounts: Record<string, number> = {};
   enriched.forEach((h) => { const a = h.ai?.action ?? "HOLD"; actionCounts[a] = (actionCounts[a] ?? 0) + 1; });
 
+  const etfValue = enriched.filter((h) => ETF_TICKERS.has(h.ticker)).reduce((s, h) => s + h.marketValue, 0);
+  const stockValue = totalValue - etfValue;
+  const etfPct = totalValue > 0 ? (etfValue / totalValue) * 100 : 0;
+  const stockPct = totalValue > 0 ? (stockValue / totalValue) * 100 : 0;
+
   // Group by account
   const accounts = [...new Set(holdings.map((h) => h.account))];
 
@@ -345,6 +352,21 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
             return <span key={a} className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>{c} {a}</span>;
           })}
           {aiLoading && <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary"><Loader2 size={10} className="animate-spin" /> Analyzing...</span>}
+        </div>
+        {/* ETF vs Stocks split */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between text-[11px] mb-1.5">
+            <span className="font-semibold text-info">ETFs {etfPct.toFixed(1)}%</span>
+            <span className="font-semibold text-violet-500">Stocks {stockPct.toFixed(1)}%</span>
+          </div>
+          <div className="flex h-2.5 rounded-full overflow-hidden bg-border">
+            {etfPct > 0 && <div className="bg-info rounded-l-full" style={{ width: `${etfPct}%` }} />}
+            {stockPct > 0 && <div className="bg-violet-500 rounded-r-full" style={{ width: `${stockPct}%` }} />}
+          </div>
+          <div className="flex items-center justify-between text-[10px] text-text-secondary mt-1">
+            <span>${etfValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            <span>${stockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          </div>
         </div>
       </div>
 
