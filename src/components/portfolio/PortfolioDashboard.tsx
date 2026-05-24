@@ -48,7 +48,13 @@ interface EnrichedHolding extends Holding {
   pnlPct: number;
 }
 
-const ETF_TICKERS = new Set(["QQQ", "VOO", "VTWO", "XLV", "IBIT", "CWEB", "SPY", "IWM", "DIA", "VTI", "SCHD", "ARKK", "EEM", "GLD", "TLT", "HYG", "LQD", "BND", "VEA", "VWO"]);
+const ETF_TICKERS = new Set(["QQQ", "VOO", "VTWO", "XLV", "IBIT", "CWEB", "SPY", "IWM", "DIA", "VTI", "SCHD", "ARKK", "EEM", "GLD", "TLT", "HYG", "LQD", "BND", "VEA", "VWO", "KWEB", "MCHI", "FXI", "ASHR", "CQQQ", "CHIQ"]);
+
+// Chinese ADRs and China-focused ETFs
+const CHINA_TICKERS = new Set(["BABA", "JD", "PDD", "BIDU", "NIO", "XPEV", "LI", "TCOM", "VIPS", "TME", "IQ", "YMM", "YUMC", "BZ", "KC", "DQ", "RLX", "NTES", "WB", "MOMO", "TAL", "EDU", "GDS", "DOYU", "HUYA", "FINV", "ZH", "LAIX", "TUYA", "KWEB", "MCHI", "FXI", "CWEB", "ASHR", "CQQQ", "CHIQ"]);
+
+// International (non-US, non-China) ETFs
+const INTL_TICKERS = new Set(["VEA", "VWO", "ACWI", "VXUS", "IXUS", "EFA", "VT", "EEM"]);
 
 const ACTION_STYLES: Record<string, { bg: string; text: string }> = {
   BUY: { bg: "bg-bullish/15", text: "text-bullish" },
@@ -170,10 +176,11 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const handleAdd = async () => {
     const ticker = addForm.ticker.toUpperCase().trim();
     if (!ticker || !addForm.shares) return;
+    const isCash = ticker === "CASH";
     const newHolding: Holding = {
       ticker,
       shares: parseFloat(addForm.shares),
-      avgCost: parseFloat(addForm.avgCost) || 0,
+      avgCost: isCash ? 1 : (parseFloat(addForm.avgCost) || 0),
       account: addForm.account || "Default",
     };
     const { merged } = mergeHoldings(holdings, [newHolding]);
@@ -298,10 +305,22 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const actionCounts: Record<string, number> = {};
   enriched.forEach((h) => { const a = h.ai?.action ?? "HOLD"; actionCounts[a] = (actionCounts[a] ?? 0) + 1; });
 
-  const etfValue = enriched.filter((h) => ETF_TICKERS.has(h.ticker)).reduce((s, h) => s + h.marketValue, 0);
-  const stockValue = totalValue - etfValue;
+  // Asset class breakdown
+  const cashValue = enriched.filter((h) => h.ticker === "CASH").reduce((s, h) => s + h.marketValue, 0);
+  const etfValue = enriched.filter((h) => ETF_TICKERS.has(h.ticker) && h.ticker !== "CASH").reduce((s, h) => s + h.marketValue, 0);
+  const stockValue = totalValue - etfValue - cashValue;
+  const cashPct = totalValue > 0 ? (cashValue / totalValue) * 100 : 0;
   const etfPct = totalValue > 0 ? (etfValue / totalValue) * 100 : 0;
   const stockPct = totalValue > 0 ? (stockValue / totalValue) * 100 : 0;
+
+  // Geography breakdown (excludes cash)
+  const investedValue = totalValue - cashValue;
+  const chinaValue = enriched.filter((h) => CHINA_TICKERS.has(h.ticker)).reduce((s, h) => s + h.marketValue, 0);
+  const intlValue = enriched.filter((h) => INTL_TICKERS.has(h.ticker) && !CHINA_TICKERS.has(h.ticker)).reduce((s, h) => s + h.marketValue, 0);
+  const usValue = investedValue - chinaValue - intlValue;
+  const usPct = investedValue > 0 ? (usValue / investedValue) * 100 : 0;
+  const chinaPct = investedValue > 0 ? (chinaValue / investedValue) * 100 : 0;
+  const intlPct = investedValue > 0 ? (intlValue / investedValue) * 100 : 0;
 
   // Group by account
   const accounts = [...new Set(holdings.map((h) => h.account))];
@@ -314,9 +333,9 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
           <button onClick={() => setShowAdd(false)} className="rounded-full p-1 hover:bg-border transition-colors"><X size={16} className="text-text-secondary" /></button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input placeholder="Ticker" value={addForm.ticker} onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value.toUpperCase() })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
-          <input placeholder="Shares" type="number" value={addForm.shares} onChange={(e) => setAddForm({ ...addForm, shares: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
-          <input placeholder="Avg Cost" type="number" value={addForm.avgCost} onChange={(e) => setAddForm({ ...addForm, avgCost: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
+          <input placeholder="Ticker (or CASH)" value={addForm.ticker} onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value.toUpperCase() })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
+          <input placeholder={addForm.ticker === "CASH" ? "Amount ($)" : "Shares"} type="number" value={addForm.shares} onChange={(e) => setAddForm({ ...addForm, shares: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
+          <input placeholder="Avg Cost" type="number" value={addForm.avgCost} onChange={(e) => setAddForm({ ...addForm, avgCost: e.target.value })} disabled={addForm.ticker === "CASH"} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10 disabled:opacity-40" />
           <input placeholder="Account" value={addForm.account} onChange={(e) => setAddForm({ ...addForm, account: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
         </div>
         <button onClick={handleAdd} className="w-full rounded-full bg-info py-3 text-sm font-semibold text-white shadow-sm shadow-info/25 active:scale-[0.98] transition-all">Add Stock</button>
@@ -328,6 +347,47 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
     const positive = h.pnl >= 0;
     const action = h.ai?.action ?? "HOLD";
     const style = ACTION_STYLES[action] ?? ACTION_STYLES.HOLD;
+    const isCash = h.ticker === "CASH";
+
+    if (isCash) {
+      return (
+        <div key={`${h.account}-CASH-${index}`} className="rounded-2xl bg-bg-surface p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">Cash</span>
+                <span className="rounded-full bg-bullish/15 px-2 py-0.5 text-[10px] font-bold text-bullish">CASH</span>
+              </div>
+              <div className="text-[11px] text-text-secondary">{h.account}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold">${h.marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+          </div>
+          <div className="mt-1 flex items-center gap-3">
+            <button
+              onClick={() => { setEditingIndex(index); setEditForm({ shares: String(h.shares), avgCost: "1", account: h.account }); }}
+              className="flex items-center gap-0.5 text-[10px] text-text-secondary hover:text-info"
+            >
+              <Pencil size={10} /> Edit
+            </button>
+            <button onClick={() => handleRemove(index)} className="text-[10px] text-text-secondary hover:text-bearish">Remove</button>
+          </div>
+          {editingIndex === index && (
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <input type="number" value={editForm.shares} onChange={(e) => setEditForm({ ...editForm, shares: e.target.value })} placeholder="Amount ($)" className="w-32 rounded-lg border border-border bg-white px-2 py-1.5 text-xs focus:border-info focus:outline-none" />
+                <input type="text" value={editForm.account} onChange={(e) => setEditForm({ ...editForm, account: e.target.value })} placeholder="Account" className="flex-1 rounded-lg border border-border bg-white px-2 py-1.5 text-xs focus:border-info focus:outline-none" />
+              </div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => handleSaveEdit(index)} className="flex items-center gap-0.5 text-[10px] font-semibold text-bullish"><Check size={12} /> Save</button>
+                <button onClick={() => setEditingIndex(null)} className="text-[10px] text-text-secondary">Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div key={`${h.account}-${h.ticker}-${index}`} className="rounded-2xl bg-bg-surface p-4 transition-all">
@@ -443,20 +503,52 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
           })}
           {aiLoading && <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary"><Loader2 size={10} className="animate-spin" /> Analyzing...</span>}
         </div>
-        {/* ETF vs Stocks split */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between text-[11px] mb-1.5">
-            <span className="font-semibold text-info">ETFs {etfPct.toFixed(1)}%</span>
-            <span className="font-semibold text-bullish">Stocks {stockPct.toFixed(1)}%</span>
+        {/* Asset class breakdown */}
+        <div className="mt-4 space-y-3">
+          <div>
+            <div className="flex items-center justify-between text-[11px] mb-1">
+              <span className="font-medium text-text-secondary">What you own</span>
+              <div className="flex gap-3 text-[10px]">
+                <span className="font-semibold text-info">ETFs {etfPct.toFixed(0)}%</span>
+                <span className="font-semibold text-violet-500">Stocks {stockPct.toFixed(0)}%</span>
+                {cashPct > 0 && <span className="font-semibold text-bullish">Cash {cashPct.toFixed(0)}%</span>}
+              </div>
+            </div>
+            <div className="flex h-2 rounded-full overflow-hidden bg-border gap-px">
+              {etfPct > 0 && <div className="bg-info" style={{ width: `${etfPct}%` }} />}
+              {stockPct > 0 && <div className="bg-violet-500" style={{ width: `${stockPct}%` }} />}
+              {cashPct > 0 && <div className="bg-bullish" style={{ width: `${cashPct}%` }} />}
+            </div>
+            <div className="flex gap-4 text-[10px] text-text-secondary mt-1">
+              <span>${etfValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <span>${stockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              {cashPct > 0 && <span>${cashValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>}
+            </div>
           </div>
-          <div className="flex h-2.5 rounded-full overflow-hidden bg-border">
-            {etfPct > 0 && <div className="bg-info rounded-l-full" style={{ width: `${etfPct}%` }} />}
-            {stockPct > 0 && <div className="bg-bullish rounded-r-full" style={{ width: `${stockPct}%` }} />}
-          </div>
-          <div className="flex items-center justify-between text-[10px] text-text-secondary mt-1">
-            <span>${etfValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-            <span>${stockValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-          </div>
+
+          {/* Geography breakdown */}
+          {investedValue > 0 && (
+            <div>
+              <div className="flex items-center justify-between text-[11px] mb-1">
+                <span className="font-medium text-text-secondary">Where it's invested</span>
+                <div className="flex gap-3 text-[10px]">
+                  <span className="font-semibold text-blue-500">🇺🇸 US {usPct.toFixed(0)}%</span>
+                  {chinaPct > 0 && <span className="font-semibold text-red-500">🇨🇳 China {chinaPct.toFixed(0)}%</span>}
+                  {intlPct > 0 && <span className="font-semibold text-orange-400">🌍 Intl {intlPct.toFixed(0)}%</span>}
+                </div>
+              </div>
+              <div className="flex h-2 rounded-full overflow-hidden bg-border gap-px">
+                {usPct > 0 && <div className="bg-blue-500" style={{ width: `${usPct}%` }} />}
+                {chinaPct > 0 && <div className="bg-red-500" style={{ width: `${chinaPct}%` }} />}
+                {intlPct > 0 && <div className="bg-orange-400" style={{ width: `${intlPct}%` }} />}
+              </div>
+              <div className="flex gap-4 text-[10px] text-text-secondary mt-1">
+                <span>${usValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                {chinaValue > 0 && <span>${chinaValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>}
+                {intlValue > 0 && <span>${intlValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
