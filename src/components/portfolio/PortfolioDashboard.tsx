@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Loader2, TrendingUp, TrendingDown, Shield, ArrowRight,
-  Plus, Upload, X, Camera, ArrowRightLeft,
+  Plus, Upload, X, Camera, ArrowRightLeft, Pencil, Check,
 } from "lucide-react";
 import ETFRebalancer from "./ETFRebalancer";
 import { authFetch } from "@/lib/api-client";
@@ -87,7 +87,10 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const [showAdd, setShowAdd] = useState(false);
   const [showRebalancer, setShowRebalancer] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ added: string[]; updated: string[] } | null>(null);
   const [addForm, setAddForm] = useState({ ticker: "", shares: "", avgCost: "", account: "" });
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ shares: "", avgCost: "", account: "" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Load user portfolio from Firestore (auto-seed for harshnagalla@gmail.com)
@@ -141,7 +144,29 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
     });
   }, [userId]);
 
-  // Add single holding
+  // Merge incoming (from screenshot) into existing — same ticker+account = update, new = add
+  function mergeHoldings(existing: Holding[], incoming: Holding[]): { merged: Holding[]; added: string[]; updated: string[] } {
+    const result = [...existing];
+    const added: string[] = [];
+    const updated: string[] = [];
+    for (const inc of incoming) {
+      const idx = result.findIndex((h) => h.ticker === inc.ticker && h.account === inc.account);
+      if (idx === -1) {
+        result.push(inc);
+        added.push(inc.ticker);
+      } else {
+        const old = result[idx];
+        if (old.shares !== inc.shares || Math.abs(old.avgCost - inc.avgCost) > 0.01) {
+          result[idx] = inc;
+          updated.push(inc.ticker);
+        }
+        // exact duplicate: skip silently
+      }
+    }
+    return { merged: result, added, updated };
+  }
+
+  // Add single holding — updates if ticker+account already exists
   const handleAdd = async () => {
     const ticker = addForm.ticker.toUpperCase().trim();
     if (!ticker || !addForm.shares) return;
@@ -151,7 +176,8 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
       avgCost: parseFloat(addForm.avgCost) || 0,
       account: addForm.account || "Default",
     };
-    await saveHoldings([...holdings, newHolding]);
+    const { merged } = mergeHoldings(holdings, [newHolding]);
+    await saveHoldings(merged);
     setAddForm({ ticker: "", shares: "", avgCost: "", account: "" });
     setShowAdd(false);
   };
@@ -162,9 +188,26 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
     await saveHoldings(newHoldings);
   };
 
-  // Import from screenshot
+  // Save inline edit
+  const handleSaveEdit = async (index: number) => {
+    const updated = holdings.map((h, i) =>
+      i === index
+        ? {
+            ...h,
+            shares: parseFloat(editForm.shares) || h.shares,
+            avgCost: parseFloat(editForm.avgCost) || h.avgCost,
+            account: editForm.account.trim() || h.account,
+          }
+        : h
+    );
+    await saveHoldings(updated);
+    setEditingIndex(null);
+  };
+
+  // Import from screenshot — dedup via mergeHoldings
   const handleImport = async (file: File) => {
     setImporting(true);
+    setImportResult(null);
     try {
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -181,13 +224,17 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
       if (res.ok) {
         const data = await res.json();
         if (data.holdings?.length > 0) {
-          await saveHoldings([...holdings, ...data.holdings]);
+          const { merged, added, updated } = mergeHoldings(holdings, data.holdings);
+          await saveHoldings(merged);
+          setImportResult({ added, updated });
+          setTimeout(() => setImportResult(null), 5000);
         }
       }
     } catch {
       // Import failed
     } finally {
       setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
@@ -212,11 +259,11 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
           <div className="mt-4 flex justify-center gap-2">
             <button
               onClick={() => setShowAdd(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-info/10 px-4 py-2.5 text-sm font-medium text-info"
+              className="flex items-center gap-1.5 rounded-full bg-info px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-info/25 active:scale-[0.98] transition-all"
             >
               <Plus size={16} /> Add Stock
             </button>
-            <label className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-bg-surface px-4 py-2.5 text-sm font-medium text-text-secondary border border-border">
+            <label className="flex cursor-pointer items-center gap-1.5 rounded-full bg-bg-surface px-4 py-2.5 text-sm font-medium text-text-secondary border border-border active:scale-[0.98] transition-all">
               <Camera size={16} /> Import Screenshot
               <input
                 type="file"
@@ -261,18 +308,18 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
 
   function renderAddForm() {
     return (
-      <div className="rounded-2xl bg-bg-surface p-4 space-y-2">
+      <div className="rounded-2xl bg-bg-surface p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold">Add Stock</span>
-          <button onClick={() => setShowAdd(false)}><X size={16} className="text-text-secondary" /></button>
+          <button onClick={() => setShowAdd(false)} className="rounded-full p-1 hover:bg-border transition-colors"><X size={16} className="text-text-secondary" /></button>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <input placeholder="Ticker" value={addForm.ticker} onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value.toUpperCase() })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
-          <input placeholder="Shares" type="number" value={addForm.shares} onChange={(e) => setAddForm({ ...addForm, shares: e.target.value })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
-          <input placeholder="Avg Cost" type="number" value={addForm.avgCost} onChange={(e) => setAddForm({ ...addForm, avgCost: e.target.value })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
-          <input placeholder="Account" value={addForm.account} onChange={(e) => setAddForm({ ...addForm, account: e.target.value })} className="rounded-lg border border-border bg-white px-3 py-2 text-sm" />
+          <input placeholder="Ticker" value={addForm.ticker} onChange={(e) => setAddForm({ ...addForm, ticker: e.target.value.toUpperCase() })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
+          <input placeholder="Shares" type="number" value={addForm.shares} onChange={(e) => setAddForm({ ...addForm, shares: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
+          <input placeholder="Avg Cost" type="number" value={addForm.avgCost} onChange={(e) => setAddForm({ ...addForm, avgCost: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
+          <input placeholder="Account" value={addForm.account} onChange={(e) => setAddForm({ ...addForm, account: e.target.value })} className="rounded-xl border border-border bg-white px-3 py-2.5 text-sm focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10" />
         </div>
-        <button onClick={handleAdd} className="w-full rounded-lg bg-info py-2 text-sm font-medium text-white">Add</button>
+        <button onClick={handleAdd} className="w-full rounded-full bg-info py-3 text-sm font-semibold text-white shadow-sm shadow-info/25 active:scale-[0.98] transition-all">Add Stock</button>
       </div>
     );
   }
@@ -331,7 +378,50 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
 
           <div className="mt-2 flex items-center justify-end text-[9px] text-info">Details <ArrowRight size={8} className="ml-0.5" /></div>
         </Link>
-        <button onClick={() => handleRemove(index)} className="mt-1 text-[10px] text-text-secondary hover:text-bearish">Remove</button>
+
+        {editingIndex === index ? (
+          <div className="mt-2 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={editForm.shares}
+                onChange={(e) => setEditForm({ ...editForm, shares: e.target.value })}
+                placeholder="Shares"
+                className="w-24 rounded-lg border border-border bg-white px-2 py-1.5 text-xs focus:border-info focus:outline-none"
+              />
+              <input
+                type="number"
+                value={editForm.avgCost}
+                onChange={(e) => setEditForm({ ...editForm, avgCost: e.target.value })}
+                placeholder="Avg Cost"
+                className="w-24 rounded-lg border border-border bg-white px-2 py-1.5 text-xs focus:border-info focus:outline-none"
+              />
+              <input
+                type="text"
+                value={editForm.account}
+                onChange={(e) => setEditForm({ ...editForm, account: e.target.value })}
+                placeholder="Account"
+                className="flex-1 rounded-lg border border-border bg-white px-2 py-1.5 text-xs focus:border-info focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => handleSaveEdit(index)} className="flex items-center gap-0.5 text-[10px] font-semibold text-bullish">
+                <Check size={12} /> Save
+              </button>
+              <button onClick={() => setEditingIndex(null)} className="text-[10px] text-text-secondary">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1 flex items-center gap-3">
+            <button
+              onClick={() => { setEditingIndex(index); setEditForm({ shares: String(h.shares), avgCost: String(h.avgCost), account: h.account }); }}
+              className="flex items-center gap-0.5 text-[10px] text-text-secondary hover:text-info"
+            >
+              <Pencil size={10} /> Edit
+            </button>
+            <button onClick={() => handleRemove(index)} className="text-[10px] text-text-secondary hover:text-bearish">Remove</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -357,11 +447,11 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
         <div className="mt-4">
           <div className="flex items-center justify-between text-[11px] mb-1.5">
             <span className="font-semibold text-info">ETFs {etfPct.toFixed(1)}%</span>
-            <span className="font-semibold text-violet-500">Stocks {stockPct.toFixed(1)}%</span>
+            <span className="font-semibold text-bullish">Stocks {stockPct.toFixed(1)}%</span>
           </div>
           <div className="flex h-2.5 rounded-full overflow-hidden bg-border">
             {etfPct > 0 && <div className="bg-info rounded-l-full" style={{ width: `${etfPct}%` }} />}
-            {stockPct > 0 && <div className="bg-violet-500 rounded-r-full" style={{ width: `${stockPct}%` }} />}
+            {stockPct > 0 && <div className="bg-bullish rounded-r-full" style={{ width: `${stockPct}%` }} />}
           </div>
           <div className="flex items-center justify-between text-[10px] text-text-secondary mt-1">
             <span>${etfValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
@@ -372,21 +462,28 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-1 rounded-xl bg-info/10 px-3 py-2 text-xs font-medium text-info">
+        <button onClick={() => setShowAdd(!showAdd)} className="flex items-center gap-1 rounded-full bg-info px-4 py-2 text-xs font-semibold text-white shadow-sm shadow-info/25 active:scale-[0.98] transition-all">
           <Plus size={14} /> Add Stock
         </button>
-        <label className="flex cursor-pointer items-center gap-1 rounded-xl bg-bg-surface px-3 py-2 text-xs font-medium text-text-secondary border border-border">
+        <label className="flex cursor-pointer items-center gap-1 rounded-full bg-bg-surface px-4 py-2 text-xs font-medium text-text-secondary border border-border active:scale-[0.98] transition-all">
           {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          {importing ? "Importing..." : "Import Screenshot"}
+          {importing ? "Importing..." : "Import"}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])} />
         </label>
         <button
           onClick={() => setShowRebalancer(!showRebalancer)}
-          className={`flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-medium transition-colors ${showRebalancer ? "bg-info/15 text-info" : "bg-bg-surface text-text-secondary border border-border"}`}
+          className={`flex items-center gap-1 rounded-full px-4 py-2 text-xs font-semibold transition-all active:scale-[0.98] ${showRebalancer ? "bg-info/15 text-info" : "bg-bg-surface text-text-secondary border border-border"}`}
         >
           <ArrowRightLeft size={14} /> Rebalance
         </button>
       </div>
+
+      {importResult && (importResult.added.length > 0 || importResult.updated.length > 0) && (
+        <div className="rounded-xl bg-bullish/10 px-4 py-2.5 text-[11px] font-medium text-bullish">
+          {importResult.added.length > 0 && <span>Added: {importResult.added.join(", ")} </span>}
+          {importResult.updated.length > 0 && <span>Updated: {importResult.updated.join(", ")}</span>}
+        </div>
+      )}
 
       {showAdd && renderAddForm()}
 

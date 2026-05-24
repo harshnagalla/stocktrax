@@ -27,12 +27,12 @@ export default function TickerSearch({
   }
 
   return (
-    <div className="flex items-center gap-2 border-b border-border bg-white px-4 py-2">
-      <div className="relative flex items-center">
+    <div className="flex items-center gap-2 border-b border-border bg-white px-4 py-2.5">
+      <div className="relative flex items-center flex-1 min-w-0">
         {loading ? (
-          <Loader2 size={14} className="absolute left-2.5 animate-spin text-info" />
+          <Loader2 size={14} className="absolute left-3 animate-spin text-info" />
         ) : (
-          <Search size={14} className="absolute left-2.5 text-text-secondary" />
+          <Search size={14} className="absolute left-3 text-text-secondary" />
         )}
         <input
           type="text"
@@ -41,24 +41,28 @@ export default function TickerSearch({
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
           placeholder={atMax ? "Max 4 tickers" : "Search ticker..."}
           disabled={atMax}
-          className="w-36 rounded-lg border border-border bg-bg-surface py-1.5 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:border-info focus:outline-none disabled:opacity-50"
+          className="w-full rounded-full border border-border bg-bg-surface py-2 pl-9 pr-4 text-sm text-text-primary placeholder:text-text-secondary focus:border-info focus:outline-none focus:ring-2 focus:ring-info/10 disabled:opacity-50 transition-all"
         />
       </div>
 
-      {tickers.map((t) => (
-        <span
-          key={t}
-          className="inline-flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-xs font-semibold text-text-primary"
-        >
-          {t}
-          <button
-            onClick={() => onRemoveTicker(t)}
-            className="rounded-full p-0.5 hover:bg-border transition-colors"
-          >
-            <X size={10} />
-          </button>
-        </span>
-      ))}
+      {tickers.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {tickers.map((t) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1 rounded-full bg-info/10 px-2.5 py-1 text-xs font-semibold text-info"
+            >
+              {t}
+              <button
+                onClick={() => onRemoveTicker(t)}
+                className="rounded-full p-0.5 hover:bg-info/20 transition-colors"
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

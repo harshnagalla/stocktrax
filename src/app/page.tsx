@@ -50,8 +50,11 @@ export default function Home() {
   // Auth loading
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <Loader2 size={24} className="animate-spin text-info" />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white gap-3">
+        <div className="h-12 w-12 rounded-2xl bg-info flex items-center justify-center shadow-lg shadow-info/25">
+          <span className="text-lg font-bold text-white">S</span>
+        </div>
+        <Loader2 size={20} className="animate-spin text-info" />
       </div>
     );
   }
@@ -83,15 +86,17 @@ export default function Home() {
           <>
             {tickers.length === 0 ? (
               <div className="rounded-2xl bg-bg-surface p-10 text-center">
-                <Search size={32} className="mx-auto text-text-secondary/50" />
-                <div className="mt-3 text-base font-semibold">Analyze a Stock</div>
-                <div className="mt-1 text-sm text-text-secondary">
+                <div className="mx-auto h-14 w-14 rounded-2xl bg-info/10 flex items-center justify-center mb-3">
+                  <Search size={24} className="text-info" />
+                </div>
+                <div className="text-base font-bold">Analyze a Stock</div>
+                <div className="mt-1 text-sm text-text-secondary leading-relaxed">
                   Type a ticker above to get a full analysis with plain English explanations
                 </div>
               </div>
             ) : loadingTickers.size > 0 && Object.keys(tickerDataMap).length === 0 ? (
               <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-12 text-text-secondary">
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 size={18} className="animate-spin text-info" />
                 <span className="text-sm">Loading...</span>
               </div>
             ) : (

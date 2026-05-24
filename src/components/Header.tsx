@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { User } from "firebase/auth";
 
 interface HeaderProps {
@@ -13,16 +13,24 @@ export default function Header({ user, onSignOut }: HeaderProps) {
     <header className="sticky top-0 z-50 border-b border-border bg-white px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity size={20} className="text-info" />
-          <span className="text-base font-semibold text-text-primary">StockTrax</span>
+          <div className="h-7 w-7 rounded-full bg-info flex items-center justify-center">
+            <span className="text-[11px] font-bold text-white">S</span>
+          </div>
+          <span className="text-base font-bold text-text-primary tracking-tight">StockTrax</span>
         </div>
 
         {user && (
           <div className="flex items-center gap-2">
-            {user.photoURL && (
-              <img src={user.photoURL} alt="" className="h-7 w-7 rounded-full" />
+            {user.photoURL ? (
+              <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
+            ) : (
+              <div className="h-8 w-8 rounded-full bg-info flex items-center justify-center">
+                <span className="text-xs font-bold text-white">
+                  {user.displayName?.[0] ?? user.email?.[0] ?? "U"}
+                </span>
+              </div>
             )}
-            <span className="text-xs text-text-secondary hidden sm:inline">
+            <span className="text-xs font-medium text-text-secondary hidden sm:inline">
               {user.displayName?.split(" ")[0]}
             </span>
             <button
