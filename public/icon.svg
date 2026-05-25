@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="112" fill="#0057FF"/>
+
+  <!-- Grid lines (subtle) -->
+  <line x1="88" y1="360" x2="424" y2="360" stroke="white" stroke-width="6" stroke-opacity="0.15"/>
+  <line x1="88" y1="280" x2="424" y2="280" stroke="white" stroke-width="6" stroke-opacity="0.15"/>
+  <line x1="88" y1="200" x2="424" y2="200" stroke="white" stroke-width="6" stroke-opacity="0.15"/>
+
+  <!-- Candle 1 — bearish (left, lowest) -->
+  <!-- wick top -->
+  <line x1="140" y1="310" x2="140" y2="328" stroke="white" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7"/>
+  <!-- body (bearish = slightly dimmer white) -->
+  <rect x="117" y="328" width="46" height="52" rx="8" fill="white" fill-opacity="0.55"/>
+  <!-- wick bottom -->
+  <line x1="140" y1="380" x2="140" y2="395" stroke="white" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7"/>
+
+  <!-- Candle 2 — bullish (middle) -->
+  <!-- wick top -->
+  <line x1="256" y1="218" x2="256" y2="238" stroke="white" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7"/>
+  <!-- body (bullish = solid white) -->
+  <rect x="233" y="238" width="46" height="70" rx="8" fill="white" fill-opacity="0.85"/>
+  <!-- wick bottom -->
+  <line x1="256" y1="308" x2="256" y2="328" stroke="white" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7"/>
+
+  <!-- Candle 3 — bullish (right, tallest) -->
+  <!-- wick top -->
+  <line x1="372" y1="148" x2="372" y2="168" stroke="white" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7"/>
+  <!-- body -->
+  <rect x="349" y="168" width="46" height="88" rx="8" fill="white"/>
+  <!-- wick bottom -->
+  <line x1="372" y1="256" x2="372" y2="276" stroke="white" stroke-width="10" stroke-linecap="round" stroke-opacity="0.7"/>
+
+  <!-- Upward trend line through candle midpoints -->
+  <polyline
+    points="140,354 256,273 372,212"
+    stroke="white"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+    stroke-opacity="0.35"
+  />
+</svg>

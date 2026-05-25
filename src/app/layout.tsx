@@ -11,6 +11,20 @@ export const metadata: Metadata = {
   title: "StockTrax — Stock Analysis Dashboard",
   description:
     "VMI scoring, technical analysis, and market sentiment for smart investing",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/manifest.webmanifest",
+  themeColor: "#0057FF",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "StockTrax",
+  },
 };
 
 export default function RootLayout({
