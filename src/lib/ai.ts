@@ -4,7 +4,7 @@ import { createGateway } from "@ai-sdk/gateway";
 const gateway = createGateway();
 
 export const TEXT_MODEL = "deepseek/deepseek-v4-pro";
-export const VISION_MODEL = "google/gemini-2.0-flash";
+export const VISION_MODEL = "deepseek/deepseek-v4-pro";
 
 interface CallOptions {
   model?: string;
@@ -17,7 +17,6 @@ const byok = {
   gateway: {
     byok: {
       deepseek: process.env.DEEPSEEK_API_KEY,
-      google: process.env.GEMINI_API_KEY,
     },
   },
 };
