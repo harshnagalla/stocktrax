@@ -41,7 +41,8 @@ Rules:
     const holdings = JSON.parse(text);
     return NextResponse.json({ holdings });
   } catch (err) {
-    console.error("Parse portfolio failed:", err);
-    return NextResponse.json({ error: "Failed to parse screenshot" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Parse portfolio failed:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
