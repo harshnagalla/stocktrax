@@ -99,18 +99,9 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const [editForm, setEditForm] = useState({ shares: "", avgCost: "", account: "" });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Load user portfolio from Firestore (auto-seed for harshnagalla@gmail.com)
+  // Load user portfolio from Firestore
   useEffect(() => {
     async function load() {
-      // Try seed first (only works for harshnagalla@gmail.com, only if empty)
-      if (email) {
-        await authFetch("/api/seed-portfolio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, email }),
-        }).catch(() => {});
-      }
-
       const res = await authFetch('/api/user-portfolio');
       const data = await res.json();
       if (data.holdings?.length > 0) setHoldings(data.holdings);
