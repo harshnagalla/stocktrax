@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "image (base64) required" }, { status: 400 });
   }
 
-  const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+  // Keep full data URL so callAIVision gets correct MIME type
+  const imageUrl = image.startsWith("data:") ? image : `data:image/png;base64,${image}`;
 
   try {
     const text = await callAIVision(
@@ -33,7 +34,7 @@ Rules:
 - Include ALL stocks visible in the screenshot
 - If avg cost is not visible, use 0
 - Return ONLY the JSON array, nothing else`,
-      base64Data,
+      imageUrl,
       { temperature: 0.1, maxOutputTokens: 2000 }
     );
 

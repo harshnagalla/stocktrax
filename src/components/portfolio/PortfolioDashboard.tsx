@@ -94,6 +94,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const [showRebalancer, setShowRebalancer] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ added: string[]; updated: string[] } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const [addForm, setAddForm] = useState({ ticker: "", shares: "", avgCost: "", account: "" });
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ shares: "", avgCost: "", account: "" });
@@ -206,6 +207,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   const handleImport = async (file: File) => {
     setImporting(true);
     setImportResult(null);
+    setImportError(null);
     try {
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -219,17 +221,21 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
         body: JSON.stringify({ image: base64 }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data.holdings?.length > 0) {
-          const { merged, added, updated } = mergeHoldings(holdings, data.holdings);
-          await saveHoldings(merged);
-          setImportResult({ added, updated });
-          setTimeout(() => setImportResult(null), 5000);
-        }
+      const data = await res.json();
+      if (!res.ok) {
+        setImportError(data.error ?? "Import failed");
+        return;
       }
-    } catch {
-      // Import failed
+      if (data.holdings?.length > 0) {
+        const { merged, added, updated } = mergeHoldings(holdings, data.holdings);
+        await saveHoldings(merged);
+        setImportResult({ added, updated });
+        setTimeout(() => setImportResult(null), 5000);
+      } else {
+        setImportError("No holdings found in screenshot");
+      }
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Import failed");
     } finally {
       setImporting(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -565,6 +571,12 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
         <div className="rounded-xl bg-bullish/10 px-4 py-2.5 text-[11px] font-medium text-bullish">
           {importResult.added.length > 0 && <span>Added: {importResult.added.join(", ")} </span>}
           {importResult.updated.length > 0 && <span>Updated: {importResult.updated.join(", ")}</span>}
+        </div>
+      )}
+
+      {importError && (
+        <div className="rounded-xl bg-bearish/10 px-4 py-2.5 text-[11px] font-medium text-bearish">
+          Import failed: {importError}
         </div>
       )}
 

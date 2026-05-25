@@ -4,7 +4,7 @@ import { createGateway } from "@ai-sdk/gateway";
 const gateway = createGateway();
 
 export const TEXT_MODEL = "deepseek/deepseek-v4-pro";
-export const VISION_MODEL = "deepseek/deepseek-v4-pro";
+export const VISION_MODEL = "google/gemini-2.0-flash";
 
 interface CallOptions {
   model?: string;
@@ -17,6 +17,7 @@ const byok = {
   gateway: {
     byok: {
       deepseek: process.env.DEEPSEEK_API_KEY,
+      google: process.env.GEMINI_API_KEY,
     },
   },
 };
@@ -35,7 +36,7 @@ export async function callAI(prompt: string, options: CallOptions = {}): Promise
 
 export async function callAIVision(
   prompt: string,
-  base64Image: string,
+  imageUrl: string,  // full data URL (data:image/png;base64,...) or http URL
   options: Omit<CallOptions, "system"> = {}
 ): Promise<string> {
   const { text } = await generateText({
@@ -44,7 +45,7 @@ export async function callAIVision(
       {
         role: "user",
         content: [
-          { type: "image", image: `data:image/png;base64,${base64Image}` },
+          { type: "image", image: imageUrl },
           { type: "text", text: prompt },
         ],
       },
