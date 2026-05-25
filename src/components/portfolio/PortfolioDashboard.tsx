@@ -268,8 +268,10 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
               <Plus size={16} /> Add Stock
             </button>
             <label className="flex cursor-pointer items-center gap-1.5 rounded-full bg-bg-surface px-4 py-2.5 text-sm font-medium text-text-secondary border border-border active:scale-[0.98] transition-all">
-              <Camera size={16} /> Import Screenshot
+              {importing ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+              {importing ? "Importing..." : "Import Screenshot"}
               <input
+                ref={fileRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
@@ -277,6 +279,11 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
               />
             </label>
           </div>
+          {importError && (
+            <div className="mt-3 rounded-xl bg-bearish/10 px-4 py-2.5 text-[11px] font-medium text-bearish">
+              Import failed: {importError}
+            </div>
+          )}
         </div>
         {showAdd && renderAddForm()}
       </div>
