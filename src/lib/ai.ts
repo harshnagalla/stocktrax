@@ -13,13 +13,15 @@ interface CallOptions {
   system?: string;
 }
 
-const byok = {
-  gateway: {
-    byok: {
-      deepseek: process.env.DEEPSEEK_API_KEY,
-    },
-  },
-};
+const byok = process.env.DEEPSEEK_API_KEY
+  ? {
+      gateway: {
+        byok: {
+          deepseek: [{ apiKey: process.env.DEEPSEEK_API_KEY }],
+        },
+      },
+    }
+  : {};
 
 export async function callAI(prompt: string, options: CallOptions = {}): Promise<string> {
   const { text } = await generateText({
