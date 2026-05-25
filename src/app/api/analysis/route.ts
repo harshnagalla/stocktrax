@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSymbol, checkRateLimit } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+import { callAI } from "@/lib/ai";
 
 // Adam Khoo's EXACT 7-Step Investment Formula (verified from his courses + videos)
 const SYSTEM_CONTEXT = `You are an investment analyst who follows Adam Khoo's 7-Step Investment Formula exactly.
@@ -38,18 +37,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid symbol" }, { status: 400 });
   }
 
-  // Check cache — analysis doesn't change within a day
   const cacheKey = `analysis:${symbol}:${todayKey()}`;
   const cached = await getCached(cacheKey);
   if (cached) {
     return NextResponse.json(cached);
   }
 
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 
-  // Fetch technical data
   const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
   let priceContext = `Analyze ${symbol}.`;
   try {
@@ -61,9 +58,7 @@ export async function GET(request: NextRequest) {
     }
   } catch { /* continue without data */ }
 
-  const prompt = `${SYSTEM_CONTEXT}
-
-CURRENT LIVE DATA — use ONLY these numbers, do NOT make up prices:
+  const prompt = `CURRENT LIVE DATA — use ONLY these numbers, do NOT make up prices:
 ${priceContext}
 
 Analyze ${symbol} using Adam Khoo's methodology.
@@ -75,52 +70,16 @@ RULES:
 - If 50 SMA < 150 SMA (trend transitioning), action should be WATCH.
 - Strategy should say what % of portfolio to allocate and general timing advice, but NOT specific dollar prices.
 
-Return JSON:
+Return ONLY valid JSON, no markdown, no explanation:
 {"action":"BUY/HOLD/SELL/WATCH","confidence":"HIGH/MEDIUM/LOW","summary":"2-3 sentences plain English","strategy":"2-3 sentences: what to do, % allocation, timing advice (no dollar prices)","moatType":"WIDE/NARROW/NONE","moatReason":"specific competitive advantages","moatScore":1-5,"dropReason":"SENTIMENT/STRUCTURAL/NONE","dropExplanation":"why it dropped","technicalScore":0-100,"fundamentalScore":0-100}`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 8192,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
+    const text = await callAI(prompt, { system: SYSTEM_CONTEXT, temperature: 0.3, maxOutputTokens: 8192 });
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("Gemini error:", res.status, err.slice(0, 200));
-      return NextResponse.json({ error: "Gemini API failed" }, { status: 502 });
-    }
-
-    const data = await res.json();
-
-    // Extract text from all parts (skip thinking parts)
-    const parts = data?.candidates?.[0]?.content?.parts ?? [];
-    let text = "";
-    for (const part of parts) {
-      if (part.text && !part.thought) text += part.text;
-    }
-
-    if (!text) {
-      console.error("Gemini empty:", JSON.stringify(data).slice(0, 300));
-      return NextResponse.json({ error: "Empty response" }, { status: 502 });
-    }
-
-    // With responseMimeType, text should be clean JSON. Try direct parse first.
     let analysis;
     try {
       analysis = JSON.parse(text);
     } catch {
-      // Fallback: extract JSON via brace matching
       const start = text.indexOf("{");
       if (start === -1) {
         console.error("No JSON found:", text.slice(0, 300));

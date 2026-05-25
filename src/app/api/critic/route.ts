@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
+import { callAI } from "@/lib/ai";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-// Critic Agent — challenges every analysis, finds flaws, asks hard questions
-// The analysis API gives the bull case. The critic gives the bear case.
-// Together they create a balanced view.
+const CRITIC_SYSTEM = `You are a BEAR CASE CRITIC — a skeptical analyst whose job is to find every possible flaw, risk, and red flag in a stock investment thesis.`;
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
@@ -20,15 +17,14 @@ export async function GET(request: NextRequest) {
   if (!symbol) {
     return NextResponse.json({ error: "symbol required" }, { status: 400 });
   }
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: "No Gemini key" }, { status: 500 });
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 
   const cacheKey = `critic:${symbol}:${todayKey()}`;
   const cached = await getCached(cacheKey);
   if (cached) return NextResponse.json(cached);
 
-  // Get the original analysis to critique
   let analysisContext = "";
   if (analysisJson) {
     try {
@@ -37,7 +33,6 @@ export async function GET(request: NextRequest) {
     } catch { /* skip */ }
   }
 
-  // Also fetch technical data
   const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000";
   let techContext = "";
   try {
@@ -49,9 +44,7 @@ export async function GET(request: NextRequest) {
     }
   } catch { /* continue */ }
 
-  const prompt = `You are a BEAR CASE CRITIC — a skeptical analyst whose job is to find every possible flaw, risk, and red flag in a stock investment thesis.
-
-You are critiquing the bull case for ${symbol}.
+  const prompt = `You are critiquing the bull case for ${symbol}.
 ${analysisContext}
 ${techContext ? `Technical data: ${techContext}` : ""}
 
@@ -65,7 +58,7 @@ Your job:
 
 Be specific, not generic. Reference actual competitors, market dynamics, and trends.
 
-Return JSON:
+Return ONLY valid JSON, no markdown:
 {
   "overallRisk": "LOW/MEDIUM/HIGH",
   "bearCase": "2-3 sentences: the strongest argument AGAINST buying this stock right now",
@@ -82,29 +75,7 @@ Return JSON:
 }`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.5, // slightly higher temp for more creative criticism
-            maxOutputTokens: 4000,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
-
-    if (!res.ok) return NextResponse.json({ error: "Gemini failed" }, { status: 502 });
-
-    const data = await res.json();
-    const parts = data?.candidates?.[0]?.content?.parts ?? [];
-    let text = "";
-    for (const part of parts) { if (part.text && !part.thought) text += part.text; }
-    if (!text) return NextResponse.json({ error: "Empty response" }, { status: 502 });
+    const text = await callAI(prompt, { system: CRITIC_SYSTEM, temperature: 0.5, maxOutputTokens: 4000 });
 
     let result;
     try {

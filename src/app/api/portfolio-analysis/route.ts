@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+import { callAI } from "@/lib/ai";
 
 const PORTFOLIO_TICKERS = [
   "ALM", "DOCU", "LULU", "MSFT", "QQQ", "SNAP", "UNH", "VOO", "VTWO", "XLV",
@@ -21,8 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(cached);
   }
 
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: "No Gemini key" }, { status: 500 });
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 
   const origin = process.env.VERCEL_URL
@@ -48,62 +47,33 @@ Key: Distinguish SENTIMENT drops (buy) from STRUCTURAL decline (avoid). 10-year 
 
 ${stockSummaries}
 
-Return JSON object, each key = ticker:
+Return ONLY valid JSON object, each key = ticker:
 {
   "MSFT": {
     "action": "BUY" or "HOLD" or "SELL",
-    "technicalScore": 0-100 (based on SMA alignment, RSI, trend strength),
-    "fundamentalScore": 0-100 (based on moat, growth, competitive position),
+    "technicalScore": 0-100,
+    "fundamentalScore": 0-100,
     "moatScore": 1-5,
-    "targetUpside": percentage number (e.g. 59 means +59% upside to intrinsic value),
+    "targetUpside": number,
     "intrinsicValue": number or null,
     "buyAtPrice": number or null,
     "analysis": "One line: RSI X (status). Near/Far from 52W lows. Above/Below key SMA. Moat assessment."
   }
 }
 
-technicalScore guide: 90+ = strong uptrend + oversold RSI, 70-89 = uptrend, 50-69 = neutral, 30-49 = weak, <30 = downtrend.
-fundamentalScore guide: 90+ = wide moat + undervalued, 70-89 = strong business, 50-69 = decent, <50 = weak/risky.
+technicalScore: 90+ = strong uptrend + oversold RSI, 70-89 = uptrend, 50-69 = neutral, 30-49 = weak, <30 = downtrend.
+fundamentalScore: 90+ = wide moat + undervalued, 70-89 = strong business, 50-69 = decent, <50 = weak/risky.
 
 Return ONLY valid JSON for all 20 tickers.`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 16384,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
-
-    if (!res.ok) {
-      console.error("Gemini batch error:", res.status);
-      return NextResponse.json({ error: "Gemini failed" }, { status: 502 });
-    }
-
-    const data = await res.json();
-    // Extract text from non-thinking parts
-    const parts = data?.candidates?.[0]?.content?.parts ?? [];
-    let text = "";
-    for (const part of parts) {
-      if (part.text && !part.thought) text += part.text;
-    }
-    if (!text) return NextResponse.json({ error: "Empty response" }, { status: 502 });
+    const text = await callAI(prompt, { temperature: 0.3, maxOutputTokens: 16384 });
 
     try {
       const result = JSON.parse(text);
       await setCache(cacheKey, result);
       return NextResponse.json(result);
     } catch {
-      // Fallback brace extraction
       const start = text.indexOf("{");
       if (start === -1) return NextResponse.json({ error: "Parse failed" }, { status: 502 });
       let depth = 0, end = start;

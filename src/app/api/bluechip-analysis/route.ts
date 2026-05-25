@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
-
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+import { callAI } from "@/lib/ai";
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
@@ -16,8 +15,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(cached);
   }
 
-  if (!GEMINI_API_KEY) {
-    return NextResponse.json({ error: "No Gemini key" }, { status: 500 });
+  if (!process.env.AI_GATEWAY_API_KEY) {
+    return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 
   const { stockSummaries } = await request.json();
@@ -31,37 +30,13 @@ Steps: 1) Consistent growth 5yr+ 2) Growth >10%/yr 3) Moat (undisruptable 10-20y
 
 ${stockSummaries}
 
-Return JSON, each key = ticker:
+Return ONLY valid JSON, each key = ticker:
 {"AAPL":{"action":"BUY","technicalScore":70,"fundamentalScore":90,"moatScore":5,"targetUpside":30,"intrinsicValue":300,"buyAtPrice":240,"analysis":"Brief one-line"}}
 
 All 10 tickers. Return ONLY valid JSON.`;
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 8192,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
-
-    if (!res.ok) return NextResponse.json({ error: "Gemini failed" }, { status: 502 });
-
-    const data = await res.json();
-    const parts = data?.candidates?.[0]?.content?.parts ?? [];
-    let text = "";
-    for (const part of parts) {
-      if (part.text && !part.thought) text += part.text;
-    }
-    if (!text) return NextResponse.json({ error: "Empty" }, { status: 502 });
+    const text = await callAI(prompt, { temperature: 0.3, maxOutputTokens: 8192 });
 
     let result;
     try {
