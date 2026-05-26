@@ -21,7 +21,7 @@ const byok = process.env.DEEPSEEK_API_KEY
         },
       },
     }
-  : {};
+  : undefined;
 
 export async function callAI(prompt: string, options: CallOptions = {}): Promise<string> {
   const { text } = await generateText({
