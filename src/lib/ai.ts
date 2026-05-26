@@ -1,7 +1,8 @@
 import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
-const deepseek = createOpenAI({
+const deepseek = createOpenAICompatible({
+  name: "deepseek",
   baseURL: "https://api.deepseek.com/v1",
   apiKey: process.env.DEEPSEEK_API_KEY ?? "",
 });
@@ -18,7 +19,7 @@ interface CallOptions {
 
 export async function callAI(prompt: string, options: CallOptions = {}): Promise<string> {
   const { text } = await generateText({
-    model: deepseek.chat(options.model ?? TEXT_MODEL),
+    model: deepseek.chatModel(options.model ?? TEXT_MODEL),
     system: options.system,
     prompt,
     temperature: options.temperature ?? 0.3,
@@ -33,7 +34,7 @@ export async function callAIVision(
   options: Omit<CallOptions, "system"> = {}
 ): Promise<string> {
   const { text } = await generateText({
-    model: deepseek.chat(options.model ?? VISION_MODEL),
+    model: deepseek.chatModel(options.model ?? VISION_MODEL),
     messages: [
       {
         role: "user",
