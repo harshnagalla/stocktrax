@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Shield, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Shield, ChevronDown, ChevronUp, Info, Crosshair, Target, AlertTriangle } from "lucide-react";
 
 interface StockData {
   name: string;
@@ -37,6 +37,40 @@ interface AiAnalysis {
   technicalScore: number;
   fundamentalScore: number;
   targetUpside: number;
+}
+
+interface DeepAnalysis {
+  sentiment_score: number;
+  decision_type: string;
+  confidence_level: string;
+  analysis_summary: string;
+  risk_warning: string;
+  dashboard: {
+    core_conclusion: {
+      one_sentence: string;
+      time_sensitivity: string;
+      position_advice: { no_position: string; has_position: string };
+    };
+    intelligence: {
+      latest_news: string;
+      risk_alerts: string[];
+      positive_catalysts: string[];
+    };
+    battle_plan: {
+      sniper_points: {
+        ideal_buy: number;
+        secondary_buy: number;
+        stop_loss: number;
+        take_profit: number;
+      };
+      position_strategy: {
+        suggested_position: string;
+        entry_plan: string;
+        risk_control: string;
+      };
+      action_checklist: string[];
+    };
+  };
 }
 
 const ACTION_STYLES: Record<string, { bg: string; text: string; border: string }> = {
@@ -75,8 +109,11 @@ export default function StockDetailPage() {
 
   const [data, setData] = useState<StockData | null>(null);
   const [ai, setAi] = useState<AiAnalysis | null>(null);
+  const [deep, setDeep] = useState<DeepAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(true);
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [deepOpen, setDeepOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
@@ -94,6 +131,16 @@ export default function StockDetailPage() {
       .catch(() => {})
       .finally(() => setAiLoading(false));
   }, [symbol]);
+
+  function loadDeepAnalysis() {
+    if (deep || deepLoading) return;
+    setDeepLoading(true);
+    fetch(`/api/deep-analysis?symbol=${symbol}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d && !d.error) setDeep(d); })
+      .catch(() => {})
+      .finally(() => setDeepLoading(false));
+  }
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-white"><Loader2 size={24} className="animate-spin text-info" /></div>;
@@ -222,6 +269,118 @@ export default function StockDetailPage() {
             )}
           </div>
         ) : null}
+
+        {/* Decision Dashboard — on-demand deep analysis */}
+        <button
+          onClick={() => { setDeepOpen(!deepOpen); if (!deepOpen) loadDeepAnalysis(); }}
+          className="flex w-full items-center justify-between rounded-2xl bg-bg-surface px-5 py-3 text-sm font-medium"
+        >
+          <div className="flex items-center gap-2">
+            <Crosshair size={14} className="text-info" />
+            Decision Dashboard
+          </div>
+          {deepOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {deepOpen && (
+          deepLoading ? (
+            <div className="flex items-center gap-2 rounded-2xl bg-bg-surface p-5 text-xs text-text-secondary">
+              <Loader2 size={12} className="animate-spin" /> Running deep analysis...
+            </div>
+          ) : deep ? (
+            <div className="rounded-2xl bg-bg-surface p-5 space-y-4">
+              {/* Header row */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    deep.decision_type === "buy" ? "bg-bullish/15 text-bullish" :
+                    deep.decision_type === "sell" ? "bg-bearish/15 text-bearish" :
+                    "bg-info/10 text-info"
+                  }`}>{deep.decision_type.toUpperCase()}</span>
+                  <span className="text-[10px] text-text-secondary">{deep.confidence_level} confidence</span>
+                </div>
+                <div className="text-right">
+                  <div className="text-[9px] text-text-secondary">Sentiment</div>
+                  <div className={`text-sm font-bold ${deep.sentiment_score > 60 ? "text-bullish" : deep.sentiment_score < 40 ? "text-bearish" : "text-info"}`}>
+                    {deep.sentiment_score}/100
+                  </div>
+                </div>
+              </div>
+
+              {/* One-liner */}
+              <p className="text-sm font-medium leading-snug">{deep.dashboard.core_conclusion.one_sentence}</p>
+
+              {/* Timing */}
+              <div className="text-[10px] text-text-secondary">
+                Time sensitivity: <span className="font-semibold text-text-primary">{deep.dashboard.core_conclusion.time_sensitivity.replace("_", " ")}</span>
+              </div>
+
+              {/* Sniper Points */}
+              <div>
+                <div className="flex items-center gap-1 mb-2 text-[10px] font-bold text-text-secondary uppercase tracking-wide">
+                  <Target size={10} />
+                  Sniper Points
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Ideal Buy", value: deep.dashboard.battle_plan.sniper_points.ideal_buy, color: "text-bullish" },
+                    { label: "Secondary Buy", value: deep.dashboard.battle_plan.sniper_points.secondary_buy, color: "text-bullish/70" },
+                    { label: "Stop Loss", value: deep.dashboard.battle_plan.sniper_points.stop_loss, color: "text-bearish" },
+                    { label: "Take Profit", value: deep.dashboard.battle_plan.sniper_points.take_profit, color: "text-info" },
+                  ].map((pt) => (
+                    <div key={pt.label} className="rounded-xl bg-white p-3 text-center">
+                      <div className="text-[9px] text-text-secondary">{pt.label}</div>
+                      <div className={`text-base font-bold ${pt.color}`}>${pt.value > 0 ? pt.value.toFixed(2) : "—"}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Position advice */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-white p-3">
+                  <div className="text-[9px] text-text-secondary mb-1">No Position</div>
+                  <p className="text-xs leading-relaxed">{deep.dashboard.core_conclusion.position_advice.no_position}</p>
+                </div>
+                <div className="rounded-xl bg-white p-3">
+                  <div className="text-[9px] text-text-secondary mb-1">Holding</div>
+                  <p className="text-xs leading-relaxed">{deep.dashboard.core_conclusion.position_advice.has_position}</p>
+                </div>
+              </div>
+
+              {/* Action Checklist */}
+              {deep.dashboard.battle_plan.action_checklist?.length > 0 && (
+                <div>
+                  <div className="mb-2 text-[10px] font-bold text-text-secondary uppercase tracking-wide">Action Checklist</div>
+                  <div className="space-y-1">
+                    {deep.dashboard.battle_plan.action_checklist.map((item, i) => (
+                      <div key={i} className="text-xs leading-relaxed">{item}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Risk warning */}
+              {deep.risk_warning && (
+                <div className="flex items-start gap-2 rounded-xl bg-bearish/5 p-3">
+                  <AlertTriangle size={12} className="mt-0.5 shrink-0 text-bearish" />
+                  <p className="text-xs text-bearish leading-relaxed">{deep.risk_warning}</p>
+                </div>
+              )}
+
+              {/* Position strategy */}
+              <div className="rounded-xl bg-white p-3 space-y-1">
+                <div className="text-[9px] font-bold text-text-secondary">POSITION SIZE</div>
+                <div className="text-xs font-semibold">{deep.dashboard.battle_plan.position_strategy.suggested_position}</div>
+                <p className="text-[10px] text-text-secondary">{deep.dashboard.battle_plan.position_strategy.entry_plan}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-bg-surface p-4 text-xs text-text-secondary text-center">
+              Deep analysis unavailable — try again
+            </div>
+          )
+        )}
 
         {/* 52W Range */}
         <div className="rounded-2xl bg-bg-surface p-4">
