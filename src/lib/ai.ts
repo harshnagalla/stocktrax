@@ -7,8 +7,8 @@ const deepseek = createOpenAICompatible({
   apiKey: process.env.DEEPSEEK_API_KEY ?? "",
 });
 
-export const TEXT_MODEL = "deepseek-chat";
-export const VISION_MODEL = "deepseek-chat";
+export const TEXT_MODEL = "deepseek-v4-pro";
+export const VISION_MODEL = "deepseek-v4-pro";
 
 interface CallOptions {
   model?: string;
