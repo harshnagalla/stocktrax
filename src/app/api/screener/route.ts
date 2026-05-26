@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
   const cached = await getCached<typeof aiData>(cacheKey);
   if (cached) {
     aiData = cached;
-  } else if (process.env.AI_GATEWAY_API_KEY) {
+  } else if (process.env.DEEPSEEK_API_KEY) {
     const top15 = results.slice(0, 15);
     const summaries = top15.map((s) =>
       `${s.symbol}(${s.name}): $${s.price}, ${s.changePercent}%, RSI ${s.rsi}, 50SMA $${s.sma50.toFixed(0)}, Score ${s.score}`

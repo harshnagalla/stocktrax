@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   if (!symbol || !validateSymbol(symbol)) {
     return NextResponse.json({ error: "Invalid symbol" }, { status: 400 });
   }
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!process.env.DEEPSEEK_API_KEY) {
     return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 

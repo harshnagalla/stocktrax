@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!process.env.DEEPSEEK_API_KEY) {
     return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 

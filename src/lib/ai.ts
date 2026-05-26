@@ -1,10 +1,13 @@
 import { generateText } from "ai";
-import { createGateway } from "@ai-sdk/gateway";
+import { createOpenAI } from "@ai-sdk/openai";
 
-const gateway = createGateway();
+const deepseek = createOpenAI({
+  baseURL: "https://api.deepseek.com/v1",
+  apiKey: process.env.DEEPSEEK_API_KEY ?? "",
+});
 
-export const TEXT_MODEL = "deepseek/deepseek-v4-pro";
-export const VISION_MODEL = "deepseek/deepseek-v4-pro";
+export const TEXT_MODEL = "deepseek-chat";
+export const VISION_MODEL = "deepseek-chat";
 
 interface CallOptions {
   model?: string;
@@ -13,35 +16,24 @@ interface CallOptions {
   system?: string;
 }
 
-const byok = process.env.DEEPSEEK_API_KEY
-  ? {
-      gateway: {
-        byok: {
-          deepseek: [{ apiKey: process.env.DEEPSEEK_API_KEY }],
-        },
-      },
-    }
-  : undefined;
-
 export async function callAI(prompt: string, options: CallOptions = {}): Promise<string> {
   const { text } = await generateText({
-    model: gateway(options.model ?? TEXT_MODEL),
+    model: deepseek(options.model ?? TEXT_MODEL),
     system: options.system,
     prompt,
     temperature: options.temperature ?? 0.3,
     maxOutputTokens: options.maxOutputTokens ?? 8192,
-    providerOptions: byok,
   });
   return text;
 }
 
 export async function callAIVision(
   prompt: string,
-  imageUrl: string,  // full data URL (data:image/png;base64,...) or http URL
+  imageUrl: string,
   options: Omit<CallOptions, "system"> = {}
 ): Promise<string> {
   const { text } = await generateText({
-    model: gateway(options.model ?? VISION_MODEL),
+    model: deepseek(options.model ?? VISION_MODEL),
     messages: [
       {
         role: "user",
@@ -53,7 +45,6 @@ export async function callAIVision(
     ],
     temperature: options.temperature ?? 0.1,
     maxOutputTokens: options.maxOutputTokens ?? 2000,
-    providerOptions: byok,
   });
   return text;
 }

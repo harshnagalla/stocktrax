@@ -5,7 +5,7 @@ __metadata:
   version: 6
   cacheKey: 8
 
-"@ai-sdk/gateway@npm:3.0.120, @ai-sdk/gateway@npm:^3.0.120":
+"@ai-sdk/gateway@npm:3.0.120":
   version: 3.0.120
   resolution: "@ai-sdk/gateway@npm:3.0.120"
   dependencies:
@@ -15,6 +15,18 @@ __metadata:
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
   checksum: 5d50153659adac2073e031d28ba41cce9f5c6735de09aea0644e0cf83059928b0a66a7054edf2575d07f6f690804f497f5abfff7ff1463c4587ac5949e0cc60b
+  languageName: node
+  linkType: hard
+
+"@ai-sdk/openai@npm:^3.0.65":
+  version: 3.0.65
+  resolution: "@ai-sdk/openai@npm:3.0.65"
+  dependencies:
+    "@ai-sdk/provider": 3.0.10
+    "@ai-sdk/provider-utils": 4.0.27
+  peerDependencies:
+    zod: ^3.25.76 || ^4.1.8
+  checksum: b4810f4a9a78e0d384ea449752074a17021e788bbe411b9d1e483cac0c7f6e7b906ef5abaa8952542756149278f848ce99d13a6a218acb7cfc8d2a0198a22586
   languageName: node
   linkType: hard
 
@@ -5974,7 +5986,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "stocktrax-init@workspace:."
   dependencies:
-    "@ai-sdk/gateway": ^3.0.120
+    "@ai-sdk/openai": ^3.0.65
     "@tailwindcss/postcss": ^4
     "@types/node": ^20
     "@types/react": ^19

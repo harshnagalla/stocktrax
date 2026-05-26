@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(cached);
   }
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
+  if (!process.env.DEEPSEEK_API_KEY) {
     return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
   }
 
