@@ -18,7 +18,7 @@ interface CallOptions {
 
 export async function callAI(prompt: string, options: CallOptions = {}): Promise<string> {
   const { text } = await generateText({
-    model: deepseek(options.model ?? TEXT_MODEL),
+    model: deepseek.chat(options.model ?? TEXT_MODEL),
     system: options.system,
     prompt,
     temperature: options.temperature ?? 0.3,
@@ -33,7 +33,7 @@ export async function callAIVision(
   options: Omit<CallOptions, "system"> = {}
 ): Promise<string> {
   const { text } = await generateText({
-    model: deepseek(options.model ?? VISION_MODEL),
+    model: deepseek.chat(options.model ?? VISION_MODEL),
     messages: [
       {
         role: "user",
