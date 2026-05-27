@@ -97,8 +97,8 @@ export async function POST(request: NextRequest) {
   if (!checkRateLimit(ip)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
-  if (!process.env.DEEPSEEK_API_KEY) {
-    return NextResponse.json({ error: "AI Gateway API key not configured" }, { status: 500 });
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json({ error: "Gemini API key not configured" }, { status: 500 });
   }
 
   const { image } = await request.json();

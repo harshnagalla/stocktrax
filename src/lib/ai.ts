@@ -8,7 +8,7 @@ const deepseek = createOpenAICompatible({
 });
 
 export const TEXT_MODEL = "deepseek-v4-pro";
-export const VISION_MODEL = "deepseek-v4-pro";
+export const VISION_MODEL = "gemini-2.5-flash";
 
 interface CallOptions {
   model?: string;
@@ -33,19 +33,58 @@ export async function callAIVision(
   imageUrl: string,
   options: Omit<CallOptions, "system"> = {}
 ): Promise<string> {
-  const { text } = await generateText({
-    model: deepseek.chatModel(options.model ?? VISION_MODEL),
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "image", image: imageUrl },
-          { type: "text", text: prompt },
-        ],
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("Gemini API key not configured");
+  }
+
+  const match = imageUrl.match(/^data:([^;,]+);base64,(.+)$/);
+  const mimeType = match?.[1] ?? "image/png";
+  const base64Data = match?.[2] ?? imageUrl;
+  const model = options.model ?? VISION_MODEL;
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inline_data: {
+                mime_type: mimeType,
+                data: base64Data,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: options.temperature ?? 0.1,
+        maxOutputTokens: options.maxOutputTokens ?? 2000,
       },
-    ],
-    temperature: options.temperature ?? 0.1,
-    maxOutputTokens: options.maxOutputTokens ?? 2000,
+    }),
   });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Gemini vision request failed: ${errorText.slice(0, 300)}`);
+  }
+
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts
+    ?.map((part: { text?: string }) => part.text ?? "")
+    .join("")
+    .trim();
+
+  if (!text) {
+    throw new Error("Gemini vision returned no text");
+  }
+
   return text;
 }
