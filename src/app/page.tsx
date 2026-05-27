@@ -65,6 +65,7 @@ export default function Home() {
   }
 
   const isLoading = loadingTickers.size > 0;
+  const starterTickers = ["VOO", "QQQ", "AAPL", "NVDA", "MSFT", "GOOG"];
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -85,13 +86,24 @@ export default function Home() {
         {activeTab === "analysis" && (
           <>
             {tickers.length === 0 ? (
-              <div className="rounded-2xl bg-bg-surface p-10 text-center">
-                <div className="mx-auto h-14 w-14 rounded-2xl bg-info/10 flex items-center justify-center mb-3">
+              <div className="rounded-2xl border border-border bg-bg-surface p-8 text-center">
+                <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-info/10">
                   <Search size={24} className="text-info" />
                 </div>
                 <div className="text-base font-bold">Analyze a Stock</div>
                 <div className="mt-1 text-sm text-text-secondary leading-relaxed">
-                  Type a ticker above to get a full analysis with plain English explanations
+                  Add a ticker above or start with a common watchlist name.
+                </div>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {starterTickers.map((ticker) => (
+                    <button
+                      key={ticker}
+                      onClick={() => handleAddTicker(ticker)}
+                      className="rounded-full border border-border bg-white px-3 py-1.5 text-xs font-bold text-text-primary transition-all hover:border-info hover:text-info active:scale-[0.98]"
+                    >
+                      {ticker}
+                    </button>
+                  ))}
                 </div>
               </div>
             ) : loadingTickers.size > 0 && Object.keys(tickerDataMap).length === 0 ? (

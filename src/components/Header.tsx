@@ -10,21 +10,25 @@ interface HeaderProps {
 
 export default function Header({ user, onSignOut }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-white px-4 py-3">
-      <div className="flex items-center justify-between">
+    <header className="sticky top-0 z-50 border-b border-border bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="mx-auto flex max-w-4xl items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-7 w-7 rounded-full bg-info flex items-center justify-center">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-info shadow-sm shadow-info/20">
             <span className="text-[11px] font-bold text-white">S</span>
           </div>
-          <span className="text-base font-bold text-text-primary tracking-tight">StockTrax</span>
+          <div>
+            <div className="text-base font-bold tracking-tight text-text-primary">StockTrax</div>
+            <div className="hidden text-[10px] font-medium text-text-secondary sm:block">Market, analysis, portfolio</div>
+          </div>
         </div>
 
         {user && (
           <div className="flex items-center gap-2">
             {user.photoURL ? (
-              <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.photoURL} alt="" className="h-8 w-8 rounded-full border border-border" />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-info flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-info">
                 <span className="text-xs font-bold text-white">
                   {user.displayName?.[0] ?? user.email?.[0] ?? "U"}
                 </span>
@@ -35,7 +39,7 @@ export default function Header({ user, onSignOut }: HeaderProps) {
             </span>
             <button
               onClick={onSignOut}
-              className="rounded-full p-1.5 text-text-secondary hover:bg-bg-surface transition-colors"
+              className="rounded-full p-2 text-text-secondary transition-colors hover:bg-bg-surface hover:text-text-primary"
               title="Sign out"
             >
               <LogOut size={14} />

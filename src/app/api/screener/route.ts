@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
           // Backtest-validated scoring (0-100)
           // Key insight: pullbacks in uptrends + transition zones score highest
           let score = 0;
-          let reasons: string[] = [];
+          const reasons: string[] = [];
 
           const distFromSma50 = sma50 > 0 ? ((price - sma50) / sma50) * 100 : 0;
           const aboveSma50 = price > sma50;

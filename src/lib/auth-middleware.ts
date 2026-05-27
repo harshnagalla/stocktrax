@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "./firebase";
 import { getAuth } from "firebase-admin/auth";
 
 // Verify Firebase ID token from Authorization header

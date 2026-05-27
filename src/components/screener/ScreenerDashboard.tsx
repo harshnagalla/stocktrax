@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, TrendingUp, TrendingDown, Shield, ArrowRight, RefreshCw, Sparkles } from "lucide-react";
+import { Loader2, Shield, ArrowRight, RefreshCw } from "lucide-react";
 
 interface ScreenResult {
   symbol: string;
@@ -61,33 +61,40 @@ function ScoreBar({ label, score, color }: { label: string; score: number; color
   );
 }
 
-function TechScoreBar({ score }: { score: number }) {
-  const color = score >= 70 ? "bg-bullish" : score >= 50 ? "bg-info" : score >= 35 ? "bg-neutral" : "bg-bearish";
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(score, 100)}%` }} />
-      </div>
-      <span className="w-5 text-right text-[10px] font-bold">{score}</span>
-    </div>
-  );
-}
-
 export default function ScreenerDashboard() {
   const [data, setData] = useState<ScreenData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
+  const [sort, setSort] = useState<"score" | "upside" | "change">("score");
 
-  function fetchData() {
-    setLoading(true);
-    fetch("/api/screener")
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }
+  const fetchData = useCallback(async (mode: "initial" | "refresh" = "initial") => {
+    if (mode === "initial") setLoading(true);
+    if (mode === "refresh") setRefreshing(true);
+    setError(null);
 
-  useEffect(() => { fetchData(); }, []);
+    try {
+      const res = await fetch("/api/screener");
+      if (!res.ok) throw new Error("Screener failed");
+      setData(await res.json());
+    } catch {
+      setError("Failed to load screener data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  const signalCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    data?.results.forEach((r) => { counts[r.signal] = (counts[r.signal] ?? 0) + 1; });
+    return counts;
+  }, [data]);
 
   if (loading) {
     return (
@@ -104,45 +111,57 @@ export default function ScreenerDashboard() {
     );
   }
 
-  if (!data) {
+  if (error || !data) {
     return (
-      <div className="rounded-2xl bg-bg-surface p-8 text-center text-sm text-text-secondary">
-        Failed to load screener data
+      <div className="rounded-2xl border border-bearish/10 bg-bearish/5 p-8 text-center">
+        <div className="text-sm font-semibold text-bearish">{error ?? "Failed to load screener data"}</div>
+        <button
+          onClick={() => fetchData()}
+          className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-bold text-text-primary shadow-sm"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
-  const filtered = filter === "all"
+  const filtered = (filter === "all"
     ? data.results
-    : data.results.filter((r) => r.signal === filter);
+    : data.results.filter((r) => r.signal === filter)
+  ).toSorted((a, b) => {
+    if (sort === "upside") return (b.targetUpside ?? -999) - (a.targetUpside ?? -999);
+    if (sort === "change") return b.changePercent - a.changePercent;
+    return b.score - a.score;
+  });
 
   return (
     <div className="space-y-3">
       {/* Summary */}
-      <div className="rounded-2xl bg-bg-surface p-5">
+      <div className="rounded-2xl border border-border bg-bg-surface p-5">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold">Stock Screener</div>
             <div className="text-xs text-text-secondary">
-              {data.total} stocks scanned · {data.strongBuys} strong buys · {data.buys} buys
+              {data.total} stocks scanned · {filtered.length} shown
             </div>
           </div>
           <button
-            onClick={fetchData}
-            className="rounded-full p-2 text-text-secondary hover:bg-white transition-colors"
+            onClick={() => fetchData("refresh")}
+            disabled={refreshing}
+            className="rounded-full p-2 text-text-secondary transition-colors hover:bg-white disabled:opacity-60"
+            title="Refresh screener"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
           </button>
         </div>
 
-        {/* Filter tabs */}
         <div className="mt-3 flex flex-wrap gap-1.5">
           {[
             { id: "all", label: `All (${data.total})` },
-            { id: "STRONG BUY", label: `Strong Buy (${data.strongBuys})` },
-            { id: "BUY", label: `Buy (${data.buys})` },
-            { id: "WATCH", label: "Watch" },
-            { id: "AVOID", label: "Avoid" },
+            { id: "STRONG BUY", label: `Strong Buy (${signalCounts["STRONG BUY"] ?? 0})` },
+            { id: "BUY", label: `Buy (${signalCounts.BUY ?? 0})` },
+            { id: "WATCH", label: `Watch (${signalCounts.WATCH ?? 0})` },
+            { id: "AVOID", label: `Avoid (${signalCounts.AVOID ?? 0})` },
           ].map((f) => (
             <button
               key={f.id}
@@ -157,6 +176,27 @@ export default function ScreenerDashboard() {
             </button>
           ))}
         </div>
+
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+          <span className="text-[10px] font-bold uppercase text-text-secondary">Sort</span>
+          <div className="flex rounded-full bg-white p-0.5">
+            {[
+              { id: "score", label: "Score" },
+              { id: "upside", label: "Upside" },
+              { id: "change", label: "Move" },
+            ].map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setSort(option.id as typeof sort)}
+                className={`rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors ${
+                  sort === option.id ? "bg-info text-white" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Results */}
@@ -164,9 +204,6 @@ export default function ScreenerDashboard() {
         {filtered.map((stock) => {
           const positive = stock.changePercent >= 0;
           const style = SIGNAL_STYLES[stock.signal] ?? SIGNAL_STYLES.HOLD;
-          const range = stock.fiftyTwoWeekHigh - stock.fiftyTwoWeekLow;
-          const posInRange = range > 0 ? ((stock.price - stock.fiftyTwoWeekLow) / range) * 100 : 50;
-
           return (
             <Link
               key={stock.symbol}

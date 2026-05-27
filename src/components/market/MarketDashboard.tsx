@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { getHistory, calculateSMA } from "@/lib/data-service";
 import {
   calculateSlope,
   calculateSentimentScore,
   getMarketRegime,
 } from "@/lib/market-utils";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import SentimentScore from "./SentimentScore";
 import IndexBar from "./IndexBar";
 import VixGauge from "./VixGauge";
@@ -42,27 +42,32 @@ interface MarketState {
 export default function MarketDashboard() {
   const [data, setData] = useState<MarketState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
+  const loadMarketData = useCallback(async (mode: "initial" | "refresh" = "initial") => {
+    if (mode === "initial") setLoading(true);
+    if (mode === "refresh") setRefreshing(true);
+    setError(null);
 
-    Promise.all([
-      fetch("/api/quotes?symbols=VOO,QQQ,VTWO,%5EVIX,%5ETNX&analyze=true").then((r) => r.json()),
-      getHistory("^GSPC"),
-    ])
-      .then(([quotes, spxHistory]) => {
-        if (!cancelled) {
-          const spxCloses = spxHistory.map((p: { close: number }) => p.close);
-          setData({ quotes, spxCloses });
-        }
-      })
-      .catch(() => { if (!cancelled) setError("Failed to load market data"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
+    try {
+      const [quotes, spxHistory] = await Promise.all([
+        fetch("/api/quotes?symbols=VOO,QQQ,VTWO,%5EVIX,%5ETNX&analyze=true").then((r) => r.json()),
+        getHistory("^GSPC"),
+      ]);
+      const spxCloses = spxHistory.map((p: { close: number }) => p.close);
+      setData({ quotes, spxCloses });
+    } catch {
+      setError("Failed to load market data");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadMarketData();
+  }, [loadMarketData]);
 
   const sentiment = useMemo(() => {
     if (!data || data.spxCloses.length === 0) return null;
@@ -90,23 +95,51 @@ export default function MarketDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-12 text-text-secondary">
-        <Loader2 size={18} className="animate-spin" />
-        <span className="text-sm">Loading market data...</span>
+      <div className="space-y-3">
+        <div className="rounded-2xl bg-bg-surface p-5">
+          <div className="h-4 w-32 rounded-full bg-border" />
+          <div className="mt-3 h-8 w-24 rounded-full bg-border" />
+          <div className="mt-3 h-3 w-full rounded-full bg-border" />
+        </div>
+        <div className="flex items-center justify-center gap-2 rounded-2xl bg-bg-surface p-12 text-text-secondary">
+          <Loader2 size={18} className="animate-spin" />
+          <span className="text-sm">Loading market data...</span>
+        </div>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="rounded-2xl bg-bearish/5 p-8 text-center text-sm text-bearish">
-        {error ?? "No data"}
+      <div className="rounded-2xl border border-bearish/10 bg-bearish/5 p-8 text-center">
+        <div className="text-sm font-semibold text-bearish">{error ?? "No market data"}</div>
+        <button
+          onClick={() => loadMarketData()}
+          className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-bold text-text-primary shadow-sm"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between px-1">
+        <div>
+          <div className="text-sm font-bold">Market Dashboard</div>
+          <div className="text-xs text-text-secondary">Live index pulse and watchlists</div>
+        </div>
+        <button
+          onClick={() => loadMarketData("refresh")}
+          disabled={refreshing}
+          className="flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 text-xs font-semibold text-text-secondary transition-colors hover:text-text-primary disabled:opacity-60"
+        >
+          <RefreshCw size={12} className={refreshing ? "animate-spin" : ""} />
+          Refresh
+        </button>
+      </div>
+
       {sentiment && (
         <SentimentScore
           score={sentiment.score}

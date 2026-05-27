@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Shield, ChevronDown, ChevronUp, Info, Crosshair, Target, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, TrendingUp, TrendingDown, Shield, ChevronDown, ChevronUp, Info, Crosshair, Target, AlertTriangle, RefreshCw } from "lucide-react";
 
 interface StockData {
   name: string;
@@ -115,22 +115,44 @@ export default function StockDetailPage() {
   const [deepLoading, setDeepLoading] = useState(false);
   const [deepOpen, setDeepOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadStock = useCallback(async (mode: "initial" | "refresh" = "initial") => {
+    if (!symbol) return;
+    if (mode === "initial") setLoading(true);
+    if (mode === "refresh") setRefreshing(true);
+    setError(null);
+
+    try {
+      const quoteRes = await fetch(`/api/quotes?symbols=${symbol}&analyze=true`);
+      if (!quoteRes.ok) throw new Error("Quote failed");
+      const quotes = await quoteRes.json();
+      setData(quotes[symbol] ?? null);
+    } catch {
+      setError(`Failed to load ${symbol}`);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [symbol]);
+
+  const loadAi = useCallback(async () => {
+    if (!symbol) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch(`/api/analysis?symbol=${symbol}`);
+      const result = res.ok ? await res.json() : null;
+      if (result && !result.error) setAi(result);
+    } finally {
+      setAiLoading(false);
+    }
+  }, [symbol]);
 
   useEffect(() => {
-    if (!symbol) return;
-
-    fetch(`/api/quotes?symbols=${symbol}&analyze=true`)
-      .then((r) => r.json())
-      .then((d) => setData(d[symbol] ?? null))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-
-    fetch(`/api/analysis?symbol=${symbol}`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d && !d.error) setAi(d); })
-      .catch(() => {})
-      .finally(() => setAiLoading(false));
-  }, [symbol]);
+    void loadStock();
+    void loadAi();
+  }, [loadStock, loadAi]);
 
   function loadDeepAnalysis() {
     if (deep || deepLoading) return;
@@ -145,8 +167,16 @@ export default function StockDetailPage() {
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-white"><Loader2 size={24} className="animate-spin text-info" /></div>;
   }
-  if (!data) {
-    return <div className="flex min-h-screen flex-col items-center justify-center bg-white gap-3"><div className="text-sm text-text-secondary">No data for {symbol}</div><button onClick={() => router.back()} className="text-sm text-info hover:underline">Go back</button></div>;
+  if (error || !data) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-white px-6 text-center">
+        <div className="text-sm font-semibold text-text-primary">{error ?? `No data for ${symbol}`}</div>
+        <div className="flex gap-2">
+          <button onClick={() => router.back()} className="rounded-full border border-border px-4 py-2 text-xs font-bold text-text-secondary">Go back</button>
+          <button onClick={() => loadStock()} className="rounded-full bg-info px-4 py-2 text-xs font-bold text-white">Retry</button>
+        </div>
+      </div>
+    );
   }
 
   const positive = data.changePercent >= 0;
@@ -187,6 +217,17 @@ export default function StockDetailPage() {
               {positive ? "+" : ""}{data.changePercent.toFixed(2)}%
             </div>
           </div>
+          <button
+            onClick={() => {
+              void loadStock("refresh");
+              void loadAi();
+            }}
+            disabled={refreshing}
+            className="rounded-full p-2 text-text-secondary transition-colors hover:bg-bg-surface hover:text-text-primary disabled:opacity-60"
+            title="Refresh"
+          >
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+          </button>
         </div>
       </div>
 
@@ -194,6 +235,17 @@ export default function StockDetailPage() {
 
         {/* Signal Card — based on REAL SMA data */}
         <div className={`rounded-2xl border ${style.border} ${style.bg} p-5`}>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-text-secondary">
+              52W position {pricePos.toFixed(0)}%
+            </span>
+            <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-text-secondary">
+              Trend {data.price > data.sma200 ? "above" : "below"} 200 SMA
+            </span>
+            <span className="rounded-full bg-white/70 px-2.5 py-1 text-[10px] font-bold text-text-secondary">
+              RSI {data.rsi}
+            </span>
+          </div>
           <div className={`text-2xl font-bold ${style.text}`}>{action}</div>
           <p className="mt-1 text-sm leading-relaxed">{ai?.summary ?? data.reason}</p>
 

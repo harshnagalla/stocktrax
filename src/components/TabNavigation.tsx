@@ -23,24 +23,26 @@ export default function TabNavigation({
   return (
     <>
       {/* Desktop tab bar */}
-      <nav className="hidden border-b border-border bg-white px-2 sm:flex">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => onTabChange(id)}
-            className={`relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === id
-                ? "text-info"
-                : "text-text-secondary hover:text-text-primary"
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-            {activeTab === id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-info" />
-            )}
-          </button>
-        ))}
+      <nav className="hidden border-b border-border bg-white px-4 sm:block">
+        <div className="mx-auto flex max-w-4xl">
+          {tabs.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => onTabChange(id)}
+              className={`relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${
+                activeTab === id
+                  ? "text-info"
+                  : "text-text-secondary hover:text-text-primary"
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+              {activeTab === id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-info" />
+              )}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {/* Mobile bottom tab bar — Moonbase style */}

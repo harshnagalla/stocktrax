@@ -4,14 +4,14 @@
   --background: #ffffff;
   --foreground: #1a1a1a;
   --color-bg-primary: #ffffff;
-  --color-bg-surface: #f2f3f5;
-  --color-border: #e8e9ec;
+  --color-bg-surface: #f6f7f9;
+  --color-border: #e5e7eb;
   --color-bullish: #16a34a;
   --color-bearish: #ef4444;
   --color-neutral: #f59e0b;
-  --color-info: #6b2aff;
+  --color-info: #2563eb;
   --color-text-primary: #1a1a1a;
-  --color-text-secondary: #8a8a9a;
+  --color-text-secondary: #6b7280;
 }
 
 @theme inline {
@@ -36,4 +36,17 @@ body {
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-info) 75%, transparent);
+  outline-offset: 2px;
 }

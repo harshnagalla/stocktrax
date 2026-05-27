@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Loader2, TrendingUp, TrendingDown, Shield, ArrowRight,
   Plus, Upload, X, Camera, ArrowRightLeft, Pencil, Check,
+  AlertTriangle, Wallet,
 } from "lucide-react";
 import ETFRebalancer from "./ETFRebalancer";
 import { authFetch } from "@/lib/api-client";
@@ -41,6 +42,7 @@ interface AiData {
 }
 
 interface EnrichedHolding extends Holding {
+  index: number;
   quote: QuoteData | null;
   ai: AiData | null;
   marketValue: number;
@@ -140,7 +142,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ holdings: newHoldings }),
     });
-  }, [userId]);
+  }, []);
 
   // Merge incoming (from screenshot) into existing — same ticker+account = update, new = add
   function mergeHoldings(existing: Holding[], incoming: Holding[]): { merged: Holding[]; added: string[]; updated: string[] } {
@@ -258,7 +260,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
         <div className="rounded-2xl bg-bg-surface p-8 text-center">
           <div className="text-base font-semibold">Add Your Portfolio</div>
           <p className="mt-1 text-sm text-text-secondary">
-            Add stocks manually or import from a screenshot
+            Add positions manually or import a brokerage screenshot.
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <button
@@ -284,6 +286,18 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
               Import failed: {importError}
             </div>
           )}
+          <div className="mt-4 grid grid-cols-3 gap-2 text-left">
+            {[
+              { label: "Import", detail: "Best for full accounts" },
+              { label: "Cash", detail: "Use CASH as ticker" },
+              { label: "Average", detail: "Cost basis per share" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-xl bg-white p-3">
+                <div className="text-[11px] font-bold">{item.label}</div>
+                <div className="mt-0.5 text-[10px] leading-snug text-text-secondary">{item.detail}</div>
+              </div>
+            ))}
+          </div>
         </div>
         {showAdd && renderAddForm()}
       </div>
@@ -291,13 +305,13 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   }
 
   // Enrich holdings
-  const enriched: EnrichedHolding[] = holdings.map((h) => {
+  const enriched: EnrichedHolding[] = holdings.map((h, index) => {
     const quote = (quotes[h.ticker] as QuoteData) ?? null;
     const ai = (aiData[h.ticker] as AiData) ?? null;
     const currentPrice = quote?.price ?? null;
     const marketValue = currentPrice ? currentPrice * h.shares : h.avgCost * h.shares;
     const costBasis = h.avgCost * h.shares;
-    return { ...h, quote, ai, marketValue, pnl: marketValue - costBasis, pnlPct: costBasis > 0 ? ((marketValue - costBasis) / costBasis) * 100 : 0 };
+    return { ...h, index, quote, ai, marketValue, pnl: marketValue - costBasis, pnlPct: costBasis > 0 ? ((marketValue - costBasis) / costBasis) * 100 : 0 };
   });
 
   const totalValue = enriched.reduce((s, h) => s + h.marketValue, 0);
@@ -328,6 +342,14 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
 
   // Group by account
   const accounts = [...new Set(holdings.map((h) => h.account))];
+  const topHolding = enriched.filter((h) => h.ticker !== "CASH").toSorted((a, b) => b.marketValue - a.marketValue)[0];
+  const topHoldingPct = topHolding && totalValue > 0 ? (topHolding.marketValue / totalValue) * 100 : 0;
+  const sellCount = actionCounts.SELL ?? 0;
+  const buyCount = actionCounts.BUY ?? 0;
+  const accountSummaries = accounts.map((account) => {
+    const value = enriched.filter((h) => h.account === account).reduce((sum, h) => sum + h.marketValue, 0);
+    return { account, value, pct: totalValue > 0 ? (value / totalValue) * 100 : 0 };
+  });
 
   function renderAddForm() {
     return (
@@ -507,6 +529,42 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
           })}
           {aiLoading && <span className="flex items-center gap-1 rounded-full bg-bg-surface px-2.5 py-1 text-text-secondary"><Loader2 size={10} className="animate-spin" /> Analyzing...</span>}
         </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-white p-3">
+            <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-text-secondary">
+              <Wallet size={11} />
+              Accounts
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {accountSummaries.map((item) => (
+                <div key={item.account} className="flex items-center justify-between gap-2 text-xs">
+                  <span className="truncate text-text-secondary">{item.account}</span>
+                  <span className="shrink-0 font-bold">{item.pct.toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-3">
+            <div className="flex items-center gap-1 text-[10px] font-bold uppercase text-text-secondary">
+              <AlertTriangle size={11} />
+              Focus
+            </div>
+            <div className="mt-2 text-xs leading-relaxed">
+              {topHolding ? (
+                <span>
+                  <strong>{topHolding.ticker}</strong> is {topHoldingPct.toFixed(0)}% of portfolio.
+                </span>
+              ) : (
+                "Add holdings to see concentration risk."
+              )}
+            </div>
+            <div className="mt-1 text-[10px] text-text-secondary">
+              {sellCount > 0 ? `${sellCount} sell flags` : buyCount > 0 ? `${buyCount} buy candidates` : "No urgent flags"}
+            </div>
+          </div>
+        </div>
+
         {/* Asset class breakdown */}
         <div className="mt-4 space-y-3">
           <div>
@@ -534,7 +592,7 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
           {investedValue > 0 && (
             <div>
               <div className="flex items-center justify-between text-[11px] mb-1">
-                <span className="font-medium text-text-secondary">Where it's invested</span>
+                <span className="font-medium text-text-secondary">Where it is invested</span>
                 <div className="flex gap-3 text-[10px]">
                   <span className="font-semibold text-blue-500">🇺🇸 US {usPct.toFixed(0)}%</span>
                   {chinaPct > 0 && <span className="font-semibold text-red-500">🇨🇳 China {chinaPct.toFixed(0)}%</span>}
@@ -594,11 +652,15 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
       {/* Holdings by account */}
       {accounts.map((account) => (
         <div key={account}>
-          <div className="mb-2 px-1 text-sm font-semibold">{account}</div>
+          <div className="mb-2 flex items-center justify-between px-1">
+            <div className="text-sm font-semibold">{account}</div>
+            <div className="text-xs font-medium text-text-secondary">
+              ${(accountSummaries.find((a) => a.account === account)?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </div>
+          </div>
           <div className="space-y-2">
             {enriched.filter((h) => h.account === account).map((h) => {
-              const idx = holdings.findIndex((hh) => hh.ticker === h.ticker && hh.account === h.account);
-              return renderCard(h, idx);
+              return renderCard(h, h.index);
             })}
           </div>
         </div>

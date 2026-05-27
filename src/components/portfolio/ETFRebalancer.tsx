@@ -38,6 +38,11 @@ export default function ETFRebalancer({ quotes }: ETFRebalancerProps) {
     setAllocations((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function normalizeAllocations() {
+    if (totalPct <= 0) return;
+    setAllocations((prev) => prev.map((a) => ({ ...a, targetPct: Math.round((a.targetPct / totalPct) * 100) })));
+  }
+
   return (
     <div className="rounded-2xl bg-bg-surface p-5">
       <div className="flex items-center gap-2 text-sm font-semibold">
@@ -47,6 +52,22 @@ export default function ETFRebalancer({ quotes }: ETFRebalancerProps) {
       <p className="mt-1 text-xs text-text-secondary">
         Enter amount to invest and see how to split across ETFs
       </p>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {[
+          { label: "Core", value: DEFAULT_ALLOCATIONS },
+          { label: "Defensive", value: [{ ticker: "VOO", targetPct: 60 }, { ticker: "SCHD", targetPct: 25 }, { ticker: "BND", targetPct: 15 }] },
+          { label: "Growth", value: [{ ticker: "QQQ", targetPct: 50 }, { ticker: "VOO", targetPct: 35 }, { ticker: "VTWO", targetPct: 15 }] },
+        ].map((preset) => (
+          <button
+            key={preset.label}
+            onClick={() => setAllocations(preset.value)}
+            className="rounded-full bg-white px-3 py-1 text-[10px] font-bold text-text-secondary transition-colors hover:text-info"
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
 
       {/* Amount input */}
       <div className="mt-3 relative">
@@ -102,8 +123,13 @@ export default function ETFRebalancer({ quotes }: ETFRebalancerProps) {
       </div>
 
       {/* Total check */}
-      <div className={`mt-3 text-xs font-bold ${totalPct === 100 ? "text-bullish" : "text-bearish"}`}>
-        Total: {totalPct}% {totalPct !== 100 && `(should be 100%)`}
+      <div className={`mt-3 flex items-center justify-between text-xs font-bold ${totalPct === 100 ? "text-bullish" : "text-bearish"}`}>
+        <span>Total: {totalPct}% {totalPct !== 100 && `(should be 100%)`}</span>
+        {totalPct > 0 && totalPct !== 100 && (
+          <button onClick={normalizeAllocations} className="rounded-full bg-white px-2.5 py-1 text-[10px] text-text-primary">
+            Normalize
+          </button>
+        )}
       </div>
 
       {/* Add ticker */}

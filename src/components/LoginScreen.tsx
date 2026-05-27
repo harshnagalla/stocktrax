@@ -9,9 +9,8 @@ export default function LoginScreen({ onSignIn, error }: LoginScreenProps) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="flex flex-col items-center mb-10">
-          <div className="h-16 w-16 rounded-2xl bg-info flex items-center justify-center mb-4 shadow-lg shadow-info/25">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-info shadow-lg shadow-info/25">
             <span className="text-2xl font-bold text-white">S</span>
           </div>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">StockTrax</h1>
@@ -20,7 +19,14 @@ export default function LoginScreen({ onSignIn, error }: LoginScreenProps) {
           </p>
         </div>
 
-        {/* Google sign-in button */}
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          {["Market pulse", "AI analysis", "Portfolio risk"].map((item) => (
+            <div key={item} className="rounded-xl bg-bg-surface px-3 py-2 text-center text-[11px] font-semibold text-text-secondary">
+              {item}
+            </div>
+          ))}
+        </div>
+
         <button
           onClick={onSignIn}
           className="flex w-full items-center justify-center gap-3 rounded-full bg-text-primary px-6 py-4 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.98] shadow-md"
