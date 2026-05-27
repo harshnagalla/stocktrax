@@ -24,7 +24,7 @@ CRITICAL DISTINCTION — When a stock drops, ask: SENTIMENT or STRUCTURAL?
 - Sentiment drops (war, interest rates, lawsuits, AI capex fears) = buying opportunity. The bus turns back to pick up passengers.
 - Structural decline (losing competitive advantage, revenue falling long-term) = AVOID no matter how cheap.
 
-Current market (March 2026): S&P down ~9%, Nasdaq down ~12%. PEG at 1.07 (lowest in 30 years). Tech selling off due to AI capex fears — this is SENTIMENT, not structural. Defensive stocks (WMT, KO, PEP, COST) are OVERVALUED — bid up as safe havens.`;
+Do not assume a market regime that is not present in the supplied live data. If market context is missing, say so and keep the recommendation driven by the provided price, moving averages, RSI, and business-quality evidence.`;
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";

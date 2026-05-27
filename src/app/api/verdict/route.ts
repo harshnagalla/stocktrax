@@ -3,6 +3,42 @@ import { checkRateLimit, validateSymbol } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
 import { callAI } from "@/lib/ai";
 
+function extractJSONObject(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch { /* try fallback */ }
+
+  const start = text.indexOf("{");
+  if (start === -1) throw new Error("No JSON object found in response");
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (char === "\"") {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+
+    if (char === "{") depth++;
+    if (char === "}") depth--;
+    if (depth === 0) return JSON.parse(text.slice(start, i + 1));
+  }
+
+  throw new Error("Incomplete JSON object in response");
+}
+
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
   if (!checkRateLimit(ip)) {
@@ -44,7 +80,7 @@ Rules: Use current price/SMAs for recommendation. Transitioning trend=don't say 
 
   try {
     const text = await callAI(prompt, { temperature: 0.3, maxOutputTokens: 4000 });
-    const result = { symbol, ...JSON.parse(text) };
+    const result = { symbol, ...(extractJSONObject(text) as object) };
     await setCache(cacheKey, result);
     return NextResponse.json(result);
   } catch (err) {

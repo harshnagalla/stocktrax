@@ -126,8 +126,11 @@ export default function PortfolioDashboard({ userId, email }: { userId: string; 
   // Fetch AI analysis when holdings change
   useEffect(() => {
     if (holdings.length === 0) return;
+    const tickers = [...new Set(holdings.filter((h) => h.ticker !== "CASH").map((h) => h.ticker))];
+    if (tickers.length === 0) return;
+
     setAiLoading(true);
-    fetch("/api/portfolio-analysis")
+    fetch(`/api/portfolio-analysis?symbols=${encodeURIComponent(tickers.join(","))}`)
       .then((r) => r.ok ? r.json() : {})
       .then((data) => { if (data && !(data as Record<string, unknown>).error) setAiData(data); })
       .catch(() => {})

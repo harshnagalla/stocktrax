@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
 import { callAI } from "@/lib/ai";
+import { getTechnicalSnapshot, round2, scoreScreenerSetup } from "@/lib/analysis-engine";
 
 // Top S&P 500 stocks by sector — curated for Adam Khoo's methodology
 // Excludes defensive/overvalued sectors (WMT, KO, PEP, COST per his advice)
@@ -21,31 +22,15 @@ const SCREEN_TICKERS = [
   "CAT", "DE", "GE", "HON", "LMT", "RTX",
 ];
 
-function calcSMA(closes: number[], period: number): number {
-  if (closes.length < period) return 0;
-  const slice = closes.slice(closes.length - period);
-  return slice.reduce((a, b) => a + b, 0) / period;
-}
-
-function calcRSI(closes: number[], period: number = 14): number {
-  if (closes.length < period + 1) return 50;
-  let avgGain = 0, avgLoss = 0;
-  for (let i = closes.length - period; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff > 0) avgGain += diff;
-    else avgLoss -= diff;
-  }
-  avgGain /= period;
-  avgLoss /= period;
-  if (avgLoss === 0) return 100;
-  return 100 - 100 / (1 + avgGain / avgLoss);
-}
-
 interface ScreenResult {
   symbol: string;
   name: string;
   price: number;
   changePercent: number;
+  ma5: number;
+  ma10: number;
+  ma20: number;
+  ma60: number;
   sma50: number;
   sma150: number;
   sma200: number;
@@ -88,77 +73,30 @@ export async function GET(request: NextRequest) {
           if (closes.length < 200) return;
 
           const price = meta.regularMarketPrice ?? 0;
-          const prev = meta.chartPreviousClose ?? price;
+          const prev = closes.length >= 2 ? closes[closes.length - 2] : price;
           const changePercent = prev > 0 ? ((price - prev) / prev) * 100 : 0;
 
-          const sma50 = calcSMA(closes, 50);
-          const sma150 = calcSMA(closes, 150);
-          const sma200 = calcSMA(closes, 200);
-          const rsi = calcRSI(closes);
-
-          // Backtest-validated scoring (0-100)
-          // Key insight: pullbacks in uptrends + transition zones score highest
-          let score = 0;
-          const reasons: string[] = [];
-
-          const distFromSma50 = sma50 > 0 ? ((price - sma50) / sma50) * 100 : 0;
-          const aboveSma50 = price > sma50;
-          const aboveSma150 = price > sma150;
-          const aboveSma200 = price > sma200;
-          const sma50Above150 = sma50 > sma150;
-
-          // Pullback opportunity (35 points) — the actual money-making setup
-          if (aboveSma150 && sma50Above150 && !aboveSma50) {
-            score += 35;
-            reasons.push("Pullback below 50 SMA in uptrend");
-          } else if (aboveSma200 && !sma50Above150) {
-            // Transition zone — backtest showed +10.45% avg return
-            score += 30;
-            reasons.push("Transition zone — historically best entry");
-          } else if (aboveSma50 && sma50Above150 && distFromSma50 < 3) {
-            score += 20;
-            reasons.push("Near 50 SMA support");
-          } else if (aboveSma50 && sma50Above150) {
-            score += 10;
-            reasons.push("Uptrend — wait for pullback");
-          }
-
-          // RSI timing (30 points) — oversold in uptrend is the trigger
-          if (rsi < 25) { score += 30; reasons.push("RSI deeply oversold"); }
-          else if (rsi < 35) { score += 25; reasons.push("RSI oversold"); }
-          else if (rsi < 45) { score += 15; reasons.push("RSI approaching oversold"); }
-          else if (rsi > 70) { score -= 10; reasons.push("RSI overbought — wait"); }
-
-          // 52-week position (20 points)
-          const range = meta.fiftyTwoWeekHigh - meta.fiftyTwoWeekLow;
-          const posInRange = range > 0 ? (price - meta.fiftyTwoWeekLow) / range : 0.5;
-          if (posInRange < 0.25) { score += 20; reasons.push("Near 52W lows — potential value"); }
-          else if (posInRange < 0.4) { score += 10; reasons.push("Lower range"); }
-          else if (posInRange > 0.9) { score -= 5; reasons.push("Near 52W highs"); }
-
-          // Above 200 SMA baseline (15 points)
-          if (aboveSma200) { score += 15; }
-          else { reasons.push("Below 200 SMA"); }
-
-          // Cap at 0-100
-          score = Math.max(0, Math.min(100, score));
-
-          let signal: string;
-          if (score >= 65) signal = "STRONG BUY";
-          else if (score >= 45) signal = "BUY";
-          else if (score >= 25 && aboveSma200) signal = "WATCH";
-          else if (!aboveSma150 && !sma50Above150) signal = "AVOID";
-          else signal = "HOLD";
+          const snapshot = getTechnicalSnapshot(closes);
+          const { score, signal, reasons } = scoreScreenerSetup(
+            price,
+            snapshot,
+            meta.fiftyTwoWeekLow ?? 0,
+            meta.fiftyTwoWeekHigh ?? 0
+          );
 
           results.push({
             symbol,
             name: meta.longName ?? meta.shortName ?? symbol,
-            price: Math.round(price * 100) / 100,
-            changePercent: Math.round(changePercent * 100) / 100,
-            sma50: Math.round(sma50 * 100) / 100,
-            sma150: Math.round(sma150 * 100) / 100,
-            sma200: Math.round(sma200 * 100) / 100,
-            rsi: Math.round(rsi),
+            price: round2(price),
+            changePercent: round2(changePercent),
+            ma5: round2(snapshot.ma5),
+            ma10: round2(snapshot.ma10),
+            ma20: round2(snapshot.ma20),
+            ma60: round2(snapshot.ma60),
+            sma50: round2(snapshot.sma50),
+            sma150: round2(snapshot.sma150),
+            sma200: round2(snapshot.sma200),
+            rsi: Math.round(snapshot.rsi),
             fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? 0,
             fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? 0,
             score,

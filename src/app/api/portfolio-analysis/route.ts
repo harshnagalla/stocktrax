@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkRateLimit } from "@/lib/api-utils";
+import { checkRateLimit, validateSymbol } from "@/lib/api-utils";
 import { getCached, setCache, todayKey } from "@/lib/cache";
 import { callAI } from "@/lib/ai";
-
-const PORTFOLIO_TICKERS = [
-  "ALM", "DOCU", "LULU", "MSFT", "QQQ", "SNAP", "UNH", "VOO", "VTWO", "XLV",
-  "NNDM", "CWEB", "ISRG", "ATEC", "NKE", "SHOP", "IBIT", "AMZN", "AMD", "GOOGL",
-];
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
@@ -14,7 +9,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const cacheKey = `portfolio-analysis:${todayKey()}`;
+  const symbolsParam = request.nextUrl.searchParams.get("symbols") ?? "";
+  const tickers = [...new Set(symbolsParam.split(",").map((s) => s.trim().toUpperCase()).filter(validateSymbol))]
+    .slice(0, 20);
+
+  if (tickers.length === 0) {
+    return NextResponse.json({ error: "symbols param required" }, { status: 400 });
+  }
+
+  const cacheKey = `portfolio-analysis:${todayKey()}:${tickers.join(",")}`;
   const cached = await getCached(cacheKey);
   if (cached) {
     return NextResponse.json(cached);
@@ -30,14 +33,14 @@ export async function GET(request: NextRequest) {
 
   let portfolioData: Record<string, Record<string, unknown>> = {};
   try {
-    const res = await fetch(`${origin}/api/portfolio`);
+    const res = await fetch(`${origin}/api/quotes?symbols=${tickers.join(",")}&analyze=true`);
     portfolioData = await res.json();
   } catch { /* continue */ }
 
-  const stockSummaries = PORTFOLIO_TICKERS.map((t) => {
+  const stockSummaries = tickers.map((t) => {
     const d = portfolioData[t] as Record<string, unknown> | undefined;
     if (!d) return `${t}: no data`;
-    return `${t}(${d.name}): $${d.price}, ${d.changePercent}%, 52W $${d.fiftyTwoWeekLow}-$${d.fiftyTwoWeekHigh}, 50SMA $${d.sma50}, 150SMA $${d.sma150}, 200SMA $${d.sma200}, RSI ${d.rsi}`;
+    return `${t}(${d.name}): $${d.price}, ${d.changePercent}%, 52W $${d.fiftyTwoWeekLow}-$${d.fiftyTwoWeekHigh}, MA5 $${d.ma5}, MA10 $${d.ma10}, MA20 $${d.ma20}, 50SMA $${d.sma50}, 150SMA $${d.sma150}, 200SMA $${d.sma200}, RSI ${d.rsi}, deterministicSignal ${d.signal}`;
   }).join("\n");
 
   const prompt = `You are Adam Khoo's investment analyst using his exact 7-Step Formula.
@@ -64,7 +67,7 @@ Return ONLY valid JSON object, each key = ticker:
 technicalScore: 90+ = strong uptrend + oversold RSI, 70-89 = uptrend, 50-69 = neutral, 30-49 = weak, <30 = downtrend.
 fundamentalScore: 90+ = wide moat + undervalued, 70-89 = strong business, 50-69 = decent, <50 = weak/risky.
 
-Return ONLY valid JSON for all 20 tickers.`;
+Return ONLY valid JSON for all tickers provided above.`;
 
   try {
     const text = await callAI(prompt, { temperature: 0.3, maxOutputTokens: 16384 });

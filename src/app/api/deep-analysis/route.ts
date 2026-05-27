@@ -165,6 +165,10 @@ export async function GET(request: NextRequest) {
         changePercent?: number;
         fiftyTwoWeekLow?: number;
         fiftyTwoWeekHigh?: number;
+        ma5?: number;
+        ma10?: number;
+        ma20?: number;
+        ma60?: number;
         sma50?: number;
         sma150?: number;
         sma200?: number;
@@ -175,23 +179,24 @@ export async function GET(request: NextRequest) {
       } | undefined;
 
       if (q) {
-        // Derive short-window MAs from available SMA data
-        // quotes API provides sma50/150/200; use them as proxies for the dashboard fields
         const price = q.price ?? 0;
+        const ma5 = q.ma5 ?? 0;
+        const ma10 = q.ma10 ?? 0;
+        const ma20 = q.ma20 ?? 0;
+        const ma60 = q.ma60 ?? 0;
         const sma50 = q.sma50 ?? 0;
         const sma150 = q.sma150 ?? 0;
         const sma200 = q.sma200 ?? 0;
 
-        // bias_ma5: % deviation of price from 50 SMA (best proxy we have without intraday data)
         const biasMA5 =
-          sma50 > 0 ? (((price - sma50) / sma50) * 100).toFixed(2) : "N/A";
+          ma5 > 0 ? (((price - ma5) / ma5) * 100).toFixed(2) : "N/A";
 
         // MA alignment summary
         const maAlignment =
-          sma50 > sma150 && sma150 > sma200
-            ? "bullish (MA50 > MA150 > MA200)"
-            : sma50 < sma150
-            ? "bearish (MA50 < MA150)"
+          ma5 > ma10 && ma10 > ma20 && sma50 > sma150 && sma150 > sma200
+            ? "bullish (MA5 > MA10 > MA20 and MA50 > MA150 > MA200)"
+            : ma5 < ma10 && ma10 < ma20
+            ? "bearish (MA5 < MA10 < MA20)"
             : "neutral";
 
         // 52-week range position
@@ -209,21 +214,26 @@ export async function GET(request: NextRequest) {
           `Daily Change: ${q.change ?? 0} (${q.changePercent ?? 0}%)`,
           `52-Week Range: $${low52} – $${high52} (${rangePos}% of range)`,
           ``,
-          `Moving Averages:`,
+          `Short-Term Moving Averages:`,
+          `  5 MA:    $${ma5}`,
+          `  10 MA:   $${ma10}`,
+          `  20 MA:   $${ma20}`,
+          `  60 MA:   $${ma60}`,
+          ``,
+          `Long-Term Moving Averages:`,
           `  50 SMA:  $${sma50}`,
           `  150 SMA: $${sma150}`,
           `  200 SMA: $${sma200}`,
           `  MA Alignment: ${maAlignment}`,
-          `  Bias vs 50 SMA: ${biasMA5}%`,
+          `  Bias vs 5 MA: ${biasMA5}%`,
           ``,
           `RSI (14): ${q.rsi ?? "N/A"}`,
           `Signal: ${q.signal ?? "N/A"}`,
           `Signal Reason: ${q.reason ?? "N/A"}`,
           `Suggested Buy Level: ${q.buyAt != null ? `$${q.buyAt}` : "N/A"}`,
           ``,
-          `NOTE: MA5/MA10/MA20 not directly available — use 50 SMA as the short-window proxy.`,
-          `For bias_ma5 use the Bias vs 50 SMA value above. For sniper_points, derive price`,
-          `levels from the 50/150/200 SMA values and RSI provided — do NOT invent numbers.`,
+          `For bias_ma5 use the Bias vs 5 MA value above. For sniper_points, derive price`,
+          `levels from the moving average values and RSI provided — do NOT invent numbers.`,
         ].join("\n");
       }
     }
@@ -240,7 +250,7 @@ Analyze ${symbol} and return a Decision Dashboard JSON object.
 
 CRITICAL RULES:
 1. sniper_points values (ideal_buy, secondary_buy, stop_loss, take_profit) MUST be derived from the moving averages and RSI in the data above. No invented numbers.
-2. bias_ma5: if Bias vs 50 SMA > 5%, set bias_status to "chase" and decision_type must be "hold".
+2. bias_ma5: if Bias vs 5 MA > 5%, set bias_status to "chase" and decision_type must be "hold".
 3. If signal_score equivalent (technicalScore) < 40, cap decision_type at "hold".
 4. action_checklist items should be prefixed: ✅ for conditions met, ⚠️ for things to watch, ❌ for active risks.
 5. sentiment_score: 0–100 where >60 = bullish, 40–60 = neutral, <40 = bearish.
